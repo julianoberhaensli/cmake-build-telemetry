@@ -1,17 +1,25 @@
 # syntax=docker/dockerfile:1.7
 # BuildTelemetry server image: ASP.NET Core API + React dashboard + CMake client download.
 #
-#   docker build -t build-telemetry .
-#   docker build --build-arg DOTNET_VERSION=10.0 -t build-telemetry .   # .NET 10 LTS (recommended)
+# CI publishes this image to ghcr.io/julianoberhaensli/cmake-build-telemetry
+# (linux/amd64 + linux/arm64). To build it yourself:
 #
-# .NET 9 is the verified default of this repository; it reached end of support on
-# 2026-11-10, so production images should be built with DOTNET_VERSION=10.0.
+#   docker build -t build-telemetry .
+#   docker buildx build --platform linux/amd64,linux/arm64 -t <registry>/build-telemetry .
+#
+# The image targets .NET 10 LTS. DOTNET_VERSION=9.0 also builds, but .NET 9 is out of
+# support since 2026-11-10.
 
-ARG DOTNET_VERSION=9.0
+ARG DOTNET_VERSION=10.0
 ARG NODE_VERSION=22
 
+# The dashboard and the server are built once on the build machine's own platform: the
+# SPA is static files and the server is published framework-dependent (portable IL, no
+# native assets), so the same output runs on every target architecture. Only the runtime
+# stage is per-platform, and it contains no RUN steps, so no emulation is needed.
+
 # ---- dashboard (static SPA) -----------------------------------------------------------
-FROM node:${NODE_VERSION}-alpine AS dashboard
+FROM --platform=$BUILDPLATFORM node:${NODE_VERSION}-alpine AS dashboard
 WORKDIR /src/dashboard
 COPY dashboard/package.json dashboard/package-lock.json ./
 RUN npm ci --no-audit --no-fund
@@ -19,7 +27,7 @@ COPY dashboard/ ./
 RUN npm run build
 
 # ---- API ---------------------------------------------------------------------------------
-FROM mcr.microsoft.com/dotnet/sdk:${DOTNET_VERSION} AS server
+FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:${DOTNET_VERSION} AS server
 ARG DOTNET_VERSION
 WORKDIR /src
 COPY server/Directory.Build.props server/Directory.Packages.props server/

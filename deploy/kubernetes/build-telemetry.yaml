@@ -7,7 +7,9 @@
 #     --from-literal=oidc-client-secret='<secret-or-empty>'
 #   kubectl -n build-telemetry apply -f build-telemetry.yaml
 #
-# Replace the image, host names and (optionally) the OIDC settings below.
+# Replace the host names and (optionally) the OIDC settings below. The image is the one CI
+# publishes (linux/amd64 + linux/arm64); pin a release tag such as :1.0.0 or a :sha-<commit>
+# tag instead of :latest for reproducible rollouts.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -26,7 +28,7 @@ spec:
         seccompProfile: { type: RuntimeDefault }
       containers:
         - name: api
-          image: registry.example.com/build-telemetry:1.0.0
+          image: ghcr.io/julianoberhaensli/cmake-build-telemetry:latest
           ports:
             - { name: http, containerPort: 8080 }
           env:

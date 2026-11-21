@@ -32,14 +32,23 @@ flowchart LR
 
 ## Quick start
 
-**1. Run the server** (Docker Compose, PostgreSQL included):
+**1. Run the server** with Docker Compose (PostgreSQL included). It uses the published image
+`ghcr.io/julianoberhaensli/cmake-build-telemetry` (linux/amd64 + linux/arm64), so you only need
+two files, not the repository:
 
 ```bash
-cd deploy
-cp .env.example .env            # set POSTGRES_PASSWORD and INGEST_API_KEY
-docker compose up -d --build    # → http://localhost:8080
-# evaluate without real builds first:  DEMO_DATA=true docker compose up -d --build
+mkdir build-telemetry && cd build-telemetry
+curl -fsSLO https://raw.githubusercontent.com/julianoberhaensli/cmake-build-telemetry/main/deploy/docker-compose.yml
+curl -fsSL -o .env https://raw.githubusercontent.com/julianoberhaensli/cmake-build-telemetry/main/deploy/.env.example
+# edit .env: set POSTGRES_PASSWORD and INGEST_API_KEY
+docker compose up -d            # → http://localhost:8080
+# evaluate without real builds first:  DEMO_DATA=true docker compose up -d
 ```
+
+Image tags: `latest` (newest `main`), `sha-<commit>`, and `1.2.3` / `1.2` for release tags `v1.2.3`.
+Pin one with `BT_IMAGE` in `.env` for production. To build the image from source instead, run
+`docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build` in `deploy/`
+of a checkout. Kubernetes: [`deploy/kubernetes/build-telemetry.yaml`](deploy/kubernetes/build-telemetry.yaml).
 
 **2. Connect a project.** Add one line, or none at all; see "Connect builds" in the dashboard:
 
@@ -106,7 +115,6 @@ cd server && BT_TEST_POSTGRES="Host=localhost;Username=postgres;Password=…" do
 bash tests/e2e/run.sh                            # against a running server (BT_URL, BT_KEY)
 ```
 
-> **.NET version.** The repository is verified on .NET 9, the SDK available when it was built.
-> .NET 9 reached end of support on **2026-11-10**. Build production images with .NET 10 LTS:
-> `docker build --build-arg DOTNET_VERSION=10.0 .` or `dotnet build -p:BtTargetFramework=net10.0`.
-> The CI workflow compiles both.
+> **.NET version.** The published image runs on .NET 10 LTS. Local development defaults to
+> .NET 9 (`dotnet build -p:BtTargetFramework=net10.0` switches), which reached end of support
+> on **2026-11-10**. CI tests both.

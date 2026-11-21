@@ -1,0 +1,14 @@
+# Build the app image from this repository instead of pulling the published one.
+# Run from deploy/ in a checkout of the repository:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
+#
+# DOTNET_VERSION (in .env) selects the .NET version: 10.0 (default, LTS) or 9.0.
+services:
+  app:
+    image: build-telemetry:local
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      args:
+        DOTNET_VERSION: ${DOTNET_VERSION:-10.0}

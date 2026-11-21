@@ -1,11 +1,16 @@
 # BuildTelemetry - single-host deployment (PostgreSQL + API/dashboard).
 #
-#   cd deploy
-#   cp .env.example .env        # set POSTGRES_PASSWORD and INGEST_API_KEY
-#   docker compose up -d --build
-#   open http://localhost:8080
+# Uses the published image; no source checkout needed:
 #
-# Demo data instead of real builds:  DEMO_DATA=true docker compose up -d --build
+#   mkdir build-telemetry && cd build-telemetry
+#   curl -fsSLO https://raw.githubusercontent.com/julianoberhaensli/cmake-build-telemetry/main/deploy/docker-compose.yml
+#   curl -fsSL -o .env https://raw.githubusercontent.com/julianoberhaensli/cmake-build-telemetry/main/deploy/.env.example
+#   # edit .env: set POSTGRES_PASSWORD and INGEST_API_KEY
+#   docker compose up -d          # -> http://localhost:8080
+#
+# Demo data instead of real builds:  DEMO_DATA=true docker compose up -d
+# Update to the newest image:        docker compose pull && docker compose up -d
+# Build the image from source:       see docker-compose.build.yml
 name: build-telemetry
 
 services:
@@ -15,7 +20,7 @@ services:
     environment:
       POSTGRES_DB: buildtelemetry
       POSTGRES_USER: buildtelemetry
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in deploy/.env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -26,12 +31,8 @@ services:
     # not published: only the app talks to the database
 
   app:
-    image: ${BT_IMAGE:-build-telemetry:latest}
-    build:
-      context: ..
-      dockerfile: Dockerfile
-      args:
-        DOTNET_VERSION: ${DOTNET_VERSION:-9.0}
+    # pin a release in production, e.g. ...cmake-build-telemetry:1.0.0 (set BT_IMAGE in .env)
+    image: ${BT_IMAGE:-ghcr.io/julianoberhaensli/cmake-build-telemetry:latest}
     restart: unless-stopped
     depends_on:
       db:
@@ -43,7 +44,7 @@ services:
       Telemetry__PublicUrl: ${PUBLIC_URL:-http://localhost:8080}
       Telemetry__TrustAllProxies: "true"
       # ingest API keys: one or more named keys (Telemetry__Ingest__ApiKeys__<name>)
-      Telemetry__Ingest__ApiKeys__default: ${INGEST_API_KEY:?Set INGEST_API_KEY in deploy/.env}
+      Telemetry__Ingest__ApiKeys__default: ${INGEST_API_KEY:?Set INGEST_API_KEY in .env}
       Telemetry__Ingest__AllowAnonymous: "false"
       Telemetry__Ingest__StoreCommands: ${STORE_COMMANDS:-true}
       Telemetry__Retention__Days: ${RETENTION_DAYS:-180}

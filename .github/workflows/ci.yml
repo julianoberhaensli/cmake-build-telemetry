@@ -3,7 +3,9 @@ name: ci
 on:
   push:
     branches: [main]
+    tags: ["v*"]
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -20,8 +22,8 @@ jobs:
         options: >-
           --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 3s --health-retries 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: |
             9.0.x
@@ -31,15 +33,17 @@ jobs:
         env:
           BT_TEST_POSTGRES: Host=localhost;Port=5432;Username=postgres;Password=postgres
         run: dotnet test BuildTelemetry.sln -c Release
-      - name: Build (net10.0)
+      - name: Build and test (net10.0)
         working-directory: server
-        run: dotnet build BuildTelemetry.sln -c Release -p:BtTargetFramework=net10.0
+        env:
+          BT_TEST_POSTGRES: Host=localhost;Port=5432;Username=postgres;Password=postgres
+        run: dotnet test BuildTelemetry.sln -c Release -p:BtTargetFramework=net10.0
 
   dashboard:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -49,6 +53,7 @@ jobs:
           npm ci --no-audit --no-fund
           npm run build
 
+  # Real CMake/Ninja builds against the server started from source (Linux + macOS clients).
   e2e:
     needs: [server, dashboard]
     strategy:
@@ -57,8 +62,8 @@ jobs:
         os: [ubuntu-24.04, macos-15]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: 9.0.x
       - name: Tools (CMake >= 4.3, Ninja)
@@ -81,23 +86,87 @@ jobs:
           Telemetry__Ingest__AllowAnonymous: "false"
           ASPNETCORE_URLS: http://127.0.0.1:8080
         run: |
-          dotnet run -c Release > server.log 2>&1 &
-          for i in $(seq 1 60); do curl -fs http://127.0.0.1:8080/healthz/ready && break; sleep 2; done
+          # --no-launch-profile: launchSettings.json would switch to port 5080 and Development
+          dotnet run -c Release --no-launch-profile > server.log 2>&1 &
+          for i in $(seq 1 90); do curl -fs http://127.0.0.1:8080/healthz/ready >/dev/null && break; sleep 2; done
+          curl -fsS http://127.0.0.1:8080/healthz/ready || { echo "::error title=server did not start::see the server log annotation"; exit 1; }
       - name: End-to-end
         run: bash tests/e2e/run.sh
       - name: Server log
-        if: always()
-        run: cat server/src/BuildTelemetry.Api/server.log || true
+        if: failure()
+        run: |
+          log=server/src/BuildTelemetry.Api/server.log
+          cat "$log" || true
+          # annotations can be read without signing in, the job log cannot
+          echo "::error title=server log (last 25 lines)::$(tail -n 25 "$log" 2>/dev/null | awk '{gsub(/%/,"%25");gsub(/\r/,"");printf "%s%%0A",$0}')"
 
+  # Build the container image, run the end-to-end test against it, then publish it to
+  # ghcr.io/<owner>/<repo> (not for pull requests):
+  #   main     -> :latest, :sha-<commit>
+  #   v1.2.3   -> :1.2.3, :1.2, :sha-<commit>
   image:
-    needs: [server, dashboard]
+    needs: [server, dashboard, e2e]
     runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: docker/setup-buildx-action@v3
-      - uses: docker/build-push-action@v6
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
+      - name: Build test image (linux/amd64)
+        uses: docker/build-push-action@v7
         with:
           context: .
-          push: false
-          build-args: DOTNET_VERSION=10.0
-          tags: build-telemetry:ci
+          load: true
+          tags: build-telemetry:test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Tools (CMake >= 4.3, Ninja)
+        run: pipx install cmake && pipx install ninja && cmake --version
+      - name: Start image with PostgreSQL
+        run: |
+          docker network create bt
+          docker run -d --name db --network bt -e POSTGRES_PASSWORD=postgres postgres:17-alpine
+          docker run -d --name app --network bt -p 8080:8080 \
+            -e ConnectionStrings__Postgres="Host=db;Database=buildtelemetry;Username=postgres;Password=postgres" \
+            -e Telemetry__Ingest__ApiKeys__e2e=e2e-key \
+            -e Telemetry__Ingest__AllowAnonymous=false \
+            build-telemetry:test
+          for i in $(seq 1 60); do curl -fs http://127.0.0.1:8080/healthz/ready >/dev/null && break; sleep 2; done
+          curl -fsS http://127.0.0.1:8080/healthz/ready || { echo "::error title=container did not start::see the container log annotation"; exit 1; }
+      - name: End-to-end against the image
+        run: bash tests/e2e/run.sh
+      - name: Container log
+        if: failure()
+        run: |
+          docker logs app || true
+          echo "::error title=container log (last 25 lines)::$(docker logs app 2>&1 | tail -n 25 | awk '{gsub(/%/,"%25");gsub(/\r/,"");printf "%s%%0A",$0}')"
+
+      - name: Log in to GitHub Container Registry
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Image tags and labels
+        id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha
+      - name: Build and publish (linux/amd64 + linux/arm64)
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          annotations: ${{ steps.meta.outputs.annotations }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

@@ -44,8 +44,24 @@ use `__`, e.g. `Telemetry__Ingest__ApiKeys__ci`.
 
 ## Deployment
 
-**Docker Compose** (single host): `deploy/docker-compose.yml`, see the README quick start.
-PostgreSQL data lives in the `pgdata` volume. Back it up with
+**Image**: CI publishes `ghcr.io/julianoberhaensli/cmake-build-telemetry` for linux/amd64 and
+linux/arm64 after all tests pass, including an end-to-end run against the built image itself.
+
+| Tag | Points to |
+|---|---|
+| `latest` | newest commit on `main` |
+| `sha-<commit>` | one exact commit |
+| `1.2.3`, `1.2` | git tag `v1.2.3` |
+
+Pin `sha-…` or a release tag in production. Build it yourself with `docker build -t build-telemetry .`
+(`--build-arg DOTNET_VERSION=9.0` for .NET 9; the default is .NET 10 LTS). In a fork, the
+first publish creates a *private* GHCR package. Make it public once under
+*Package settings → Change visibility* so servers can pull it without logging in.
+
+**Docker Compose** (single host): `deploy/docker-compose.yml` pulls the image, so a server only
+needs that file and an `.env` (see the README quick start). `deploy/docker-compose.build.yml`
+builds from source instead. Updating: `docker compose pull && docker compose up -d`; migrations
+run on start. PostgreSQL data lives in the `pgdata` volume. Back it up with
 `docker compose exec db pg_dump -U buildtelemetry buildtelemetry > backup.sql`.
 
 **Kubernetes**: `deploy/kubernetes/build-telemetry.yaml` (Deployment with probes, restricted
@@ -55,9 +71,6 @@ API is stateless, so scale replicas freely. With OIDC and several replicas, shar
 
 **TLS** terminates at the ingress or reverse proxy. Set `Telemetry__PublicUrl` to the external
 https URL.
-
-**Image**: `docker build --build-arg DOTNET_VERSION=10.0 -t build-telemetry .`. Use .NET 10 LTS
-for production; .NET 9 is out of support since 2026-11-10.
 
 ## Operations
 
