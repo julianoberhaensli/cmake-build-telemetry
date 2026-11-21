@@ -27,6 +27,7 @@ public static class DatabaseServiceCollectionExtensions
             var builder = new NpgsqlDataSourceBuilder(csb.ConnectionString);
             return builder.Build();
         });
+        services.AddSingleton(new DatabaseConnectionString(csb.ConnectionString));
         services.AddSingleton<MigrationRunner>();
         services.AddSingleton<DatabaseReadiness>();
         services.AddHostedService<DatabaseInitializer>();

@@ -72,7 +72,8 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           docker run -d --name pg -e POSTGRES_PASSWORD=postgres -p 5432:5432 postgres:17-alpine
-          until docker exec pg pg_isready -U postgres; do sleep 1; done
+          # over TCP: the image's temporary init server answers on the Unix socket only
+          until docker exec pg pg_isready -h 127.0.0.1 -U postgres; do sleep 1; done
       - name: PostgreSQL (macOS)
         if: runner.os == 'macOS'
         run: |
@@ -98,7 +99,7 @@ jobs:
           log=server/src/BuildTelemetry.Api/server.log
           cat "$log" || true
           # annotations can be read without signing in, the job log cannot
-          echo "::error title=server log (last 25 lines)::$(tail -n 25 "$log" 2>/dev/null | awk '{gsub(/%/,"%25");gsub(/\r/,"");printf "%s%%0A",$0}')"
+          echo "::error title=server log (first 40 lines without health checks)::$(grep -v -E 'Health check|HealthCheckService' "$log" 2>/dev/null | head -n 40 | awk '{gsub(/%/,"%25");gsub(/\r/,"");printf "%s%%0A",$0}')"
 
   # Build the container image, run the end-to-end test against it, then publish it to
   # ghcr.io/<owner>/<repo> (not for pull requests):
@@ -140,7 +141,7 @@ jobs:
         if: failure()
         run: |
           docker logs app || true
-          echo "::error title=container log (last 25 lines)::$(docker logs app 2>&1 | tail -n 25 | awk '{gsub(/%/,"%25");gsub(/\r/,"");printf "%s%%0A",$0}')"
+          echo "::error title=container log (first 40 lines without health checks)::$(docker logs app 2>&1 | grep -v -E 'Health check|HealthCheckService' | head -n 40 | awk '{gsub(/%/,"%25");gsub(/\r/,"");printf "%s%%0A",$0}')"
 
       - name: Log in to GitHub Container Registry
         if: github.event_name != 'pull_request'

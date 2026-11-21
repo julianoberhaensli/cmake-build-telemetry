@@ -18,9 +18,14 @@ struct Fib<0> {
   static constexpr long long value = 0;
 };
 
+// Pack expansion into an array, not a fold expression: Clang limits fold expressions
+// to its bracket depth (256 by default), and this sums 900 terms.
 template <std::size_t... I>
 constexpr long long sum_fib(std::index_sequence<I...>) {
-  return (Fib<static_cast<int>(I % 60)>::value + ...);
+  constexpr long long values[] = {Fib<static_cast<int>(I % 60)>::value...};
+  long long sum = 0;
+  for (long long v : values) sum += v;
+  return sum;
 }
 
 template <std::size_t N>

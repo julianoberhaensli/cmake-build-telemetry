@@ -8,24 +8,45 @@ namespace BuildTelemetry.Api.Data;
 /// Applies embedded <c>Data/Migrations/NNNN_name.sql</c> scripts in order, each in its
 /// own transaction. A PostgreSQL advisory lock makes concurrent replicas safe.
 /// </summary>
-public sealed class MigrationRunner(NpgsqlDataSource dataSource, ILogger<MigrationRunner> logger)
+public sealed class MigrationRunner(
+    NpgsqlDataSource dataSource,
+    DatabaseConnectionString connectionString,
+    ILogger<MigrationRunner> logger)
 {
     private const long AdvisoryLockKey = 0x42_75_69_6C_64_54_6C_6D; // "BuildTlm"
+
+    /// <summary>
+    /// The database to create and a connection string for the <c>postgres</c> maintenance
+    /// database, derived from the configured connection string (password included).
+    /// </summary>
+    internal static (string Database, string AdminConnectionString)? CreateTarget(string configured)
+    {
+        var csb = new NpgsqlConnectionStringBuilder(configured);
+        var name = csb.Database;
+        if (string.IsNullOrEmpty(name))
+        {
+            return null;
+        }
+
+        csb.Database = "postgres";
+        return (name, csb.ConnectionString);
+    }
 
     /// <summary>Creates the configured database when it does not exist (needs CREATEDB).</summary>
     public async Task<bool> TryCreateDatabaseAsync(CancellationToken ct)
     {
-        var csb = new NpgsqlConnectionStringBuilder(dataSource.ConnectionString);
-        var name = csb.Database;
-        if (string.IsNullOrEmpty(name))
+        // Not dataSource.ConnectionString: Npgsql strips the password from it, so servers
+        // that require password authentication would reject the maintenance connection.
+        var target = CreateTarget(connectionString.Value);
+        if (target is null)
         {
             return false;
         }
 
-        csb.Database = "postgres";
+        var (name, adminConnectionString) = target.Value;
         try
         {
-            await using var conn = new NpgsqlConnection(csb.ConnectionString);
+            await using var conn = new NpgsqlConnection(adminConnectionString);
             await conn.OpenAsync(ct);
             var quoted = "\"" + name.Replace("\"", "\"\"") + "\"";
             await conn.ExecuteAsync(new CommandDefinition($"create database {quoted}", cancellationToken: ct));
@@ -156,6 +177,12 @@ internal sealed class DatabaseInitializer(
         _ => false,
     };
 }
+
+/// <summary>
+/// The configured connection string, password included. <see cref="NpgsqlDataSource.ConnectionString"/>
+/// omits the password, so code that opens connections outside the data source uses this.
+/// </summary>
+public sealed record DatabaseConnectionString(string Value);
 
 /// <summary>Signals that migrations completed (used by readiness probe and dependent services).</summary>
 public sealed class DatabaseReadiness
