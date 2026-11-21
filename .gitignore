@@ -1,0 +1,22 @@
+# .NET
+server/**/bin/
+server/**/obj/
+server/**/TestResults/
+*.user
+.vs/
+
+# Node
+dashboard/node_modules/
+dashboard/dist/
+
+# local deployment config
+deploy/.env
+
+# sample build trees
+samples/**/build*/
+
+# IDEs / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

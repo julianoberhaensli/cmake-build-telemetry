@@ -1,0 +1,171 @@
+{
+ "schema": "build-telemetry/bundle@1",
+ "bundleId": "3458fade-4661-363b-f460-508458ebbf9e",
+ "createdAt": "2026-11-21T10:44:35Z",
+ "hook": "postCMakeBuild",
+ "dataVersion": {
+  "major": 1,
+  "minor": 1
+ },
+ "client": {
+  "name": "BuildTelemetry.cmake",
+  "version": "1.0.0",
+  "mode": "project",
+  "detail": "summary",
+  "anonymized": false
+ },
+ "machine": {
+  "id": "5f3c0a9e2b7d4e1f8a6c3b2d1e0f9a8b",
+  "hostname": "build-host",
+  "user": "b9dc08f012df6261",
+  "cpuModel": "13th Gen Intel(R) Core(TM) i9-13900K",
+  "osPrettyName": "Windows 11 Pro 26H2"
+ },
+ "system": {
+  "OSName": "Windows",
+  "OSPlatform": "AMD64",
+  "OSRelease": "10.0.26300",
+  "OSVersion": "Windows 10",
+  "familyId": "6",
+  "hostname": "build-host",
+  "is64Bits": true,
+  "modelId": "7",
+  "modelName": null,
+  "numberOfLogicalCPU": 32,
+  "numberOfPhysicalCPU": 24,
+  "processorAPICID": 49,
+  "processorCacheSize": null,
+  "processorClockFrequency": 3000.0,
+  "processorName": "Pentium III (0.25 micron)",
+  "totalPhysicalMemory": 32451,
+  "totalVirtualMemory": 22528,
+  "vendorID": "Intel Corporation",
+  "vendorString": "GenuineIntel"
+ },
+ "project": {
+  "name": "TelemetryDemo",
+  "sourceDir": "C:/work/repo/samples/demo-project",
+  "buildDir": "C:/work/scratch/b-summary"
+ },
+ "build": {
+  "generator": "Ninja",
+  "buildTool": "1.13.2.git.kitware.jobserver-pipe-1",
+  "buildType": null,
+  "configurationTypes": null,
+  "cmakeVersion": "4.4.5",
+  "compilerLauncher": null,
+  "linkerType": null,
+  "toolchainFile": null,
+  "unityBuild": null,
+  "ipo": null,
+  "compilers": {
+   "CXX": {
+    "id": "GNU",
+    "version": "13.2.0",
+    "frontendVariant": "GNU",
+    "architecture": "x86_64",
+    "linkerId": null,
+    "linkerVersion": null,
+    "executable": "g++.exe"
+   },
+   "C": null
+  }
+ },
+ "vcs": {
+  "branch": null,
+  "commit": null
+ },
+ "ci": {
+  "isCI": false,
+  "provider": null,
+  "url": null,
+  "job": null,
+  "runner": null
+ },
+ "tags": {},
+ "snippets": [
+  {
+   "cmakeContent": "content/cmake-2026-11-21T10-44-28-0379.json",
+   "duration": 6262,
+   "result": 0,
+   "role": "cmakeBuild",
+   "timeStart": 1795257868749,
+   "version": {
+    "major": 1,
+    "minor": 1
+   },
+   "workingDir": "C:/work/repo"
+  },
+  {
+   "cmakeContent": "content/cmake-2026-11-21T10-44-28-0379.json",
+   "duration": 1300,
+   "result": 0,
+   "role": "configure",
+   "timeStart": 1795257867042,
+   "version": {
+    "major": 1,
+    "minor": 1
+   },
+   "workingDir": "C:/work/repo"
+  },
+  {
+   "cmakeContent": "content/cmake-2026-11-21T10-44-28-0379.json",
+   "duration": 37,
+   "result": 0,
+   "role": "generate",
+   "timeStart": 1795257868344,
+   "version": {
+    "major": 1,
+    "minor": 1
+   },
+   "workingDir": "C:/work/repo"
+  }
+ ],
+ "roleStats": {
+  "compile": {
+   "count": 11,
+   "durationMs": 6925,
+   "failed": 0
+  },
+  "link": {
+   "count": 11,
+   "durationMs": 3924,
+   "failed": 0
+  }
+ },
+ "content": [
+  {
+   "file": "content/cmake-2026-11-21T10-44-28-0379.json",
+   "data": {
+    "custom": {},
+    "project": "TelemetryDemo",
+    "targets": {
+     "core": {
+      "labels": [],
+      "type": "STATIC_LIBRARY"
+     },
+     "demo_bench": {
+      "labels": [],
+      "type": "EXECUTABLE"
+     },
+     "demo_cli": {
+      "labels": [],
+      "type": "EXECUTABLE"
+     },
+     "numeric": {
+      "labels": [],
+      "type": "STATIC_LIBRARY"
+     },
+     "text": {
+      "labels": [],
+      "type": "STATIC_LIBRARY"
+     }
+    },
+    "version": {
+     "major": 1,
+     "minor": 1
+    }
+   }
+  }
+ ]
+}

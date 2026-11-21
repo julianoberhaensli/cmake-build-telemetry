@@ -1,0 +1,31 @@
+<Project>
+  <!--
+    Target framework is a single switch:
+      dotnet build -p:BtTargetFramework=net10.0
+    net9.0 is the default because it is the SDK this repository was verified with.
+    NOTE: .NET 9 (STS) reached end of support on 2026-11-10 - production deployments
+    should build with net10.0 (LTS); the Dockerfile exposes the same switch.
+  -->
+  <PropertyGroup>
+    <BtTargetFramework Condition="'$(BtTargetFramework)' == ''">net9.0</BtTargetFramework>
+    <TargetFramework>$(BtTargetFramework)</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <Deterministic>true</Deterministic>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <NuGetAudit>true</NuGetAudit>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net9.0'">
+    <AspNetCorePackageVersion>9.0.23</AspNetCorePackageVersion>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net10.0'">
+    <AspNetCorePackageVersion>10.0.15</AspNetCorePackageVersion>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(AspNetCorePackageVersion)' == ''">
+    <AspNetCorePackageVersion>10.0.15</AspNetCorePackageVersion>
+  </PropertyGroup>
+</Project>

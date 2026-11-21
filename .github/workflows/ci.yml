@@ -1,0 +1,103 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  server:
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 3s --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            9.0.x
+            10.0.x
+      - name: Build and test (net9.0)
+        working-directory: server
+        env:
+          BT_TEST_POSTGRES: Host=localhost;Port=5432;Username=postgres;Password=postgres
+        run: dotnet test BuildTelemetry.sln -c Release
+      - name: Build (net10.0)
+        working-directory: server
+        run: dotnet build BuildTelemetry.sln -c Release -p:BtTargetFramework=net10.0
+
+  dashboard:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: dashboard/package-lock.json
+      - working-directory: dashboard
+        run: |
+          npm ci --no-audit --no-fund
+          npm run build
+
+  e2e:
+    needs: [server, dashboard]
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-15]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+      - name: Tools (CMake >= 4.3, Ninja)
+        run: pipx install cmake && pipx install ninja && cmake --version
+      - name: PostgreSQL
+        if: runner.os == 'Linux'
+        run: |
+          docker run -d --name pg -e POSTGRES_PASSWORD=postgres -p 5432:5432 postgres:17-alpine
+          until docker exec pg pg_isready -U postgres; do sleep 1; done
+      - name: PostgreSQL (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install postgresql@17 && brew services start postgresql@17
+          sleep 5 && /opt/homebrew/opt/postgresql@17/bin/psql -d postgres -c "create role postgres with login superuser password 'postgres';" || true
+      - name: Start server
+        working-directory: server/src/BuildTelemetry.Api
+        env:
+          ConnectionStrings__Postgres: Host=localhost;Port=5432;Database=bt_e2e;Username=postgres;Password=postgres
+          Telemetry__Ingest__ApiKeys__e2e: e2e-key
+          Telemetry__Ingest__AllowAnonymous: "false"
+          ASPNETCORE_URLS: http://127.0.0.1:8080
+        run: |
+          dotnet run -c Release > server.log 2>&1 &
+          for i in $(seq 1 60); do curl -fs http://127.0.0.1:8080/healthz/ready && break; sleep 2; done
+      - name: End-to-end
+        run: bash tests/e2e/run.sh
+      - name: Server log
+        if: always()
+        run: cat server/src/BuildTelemetry.Api/server.log || true
+
+  image:
+    needs: [server, dashboard]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          build-args: DOTNET_VERSION=10.0
+          tags: build-telemetry:ci

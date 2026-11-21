@@ -1,0 +1,103 @@
+/* Visualization tokens (validated palette: light + dark selected separately). */
+:root {
+  --viz-page: #f9f9f7;
+  --viz-surface: #fcfcfb;
+  --viz-text-1: #0b0b0b;
+  --viz-text-2: #52514e;
+  --viz-muted: #898781;
+  --viz-grid: #e1e0d9;
+  --viz-axis: #c3c2b7;
+  --viz-border: rgba(11, 11, 11, 0.1);
+  --viz-s1: #2a78d6;
+  --viz-s2: #eb6834;
+  --viz-s3: #1baf7a;
+  --viz-s4: #eda100;
+  --viz-s5: #e87ba4;
+  --viz-s1-wash: rgba(42, 120, 214, 0.1);
+  --viz-good: #0ca30c;
+  --viz-warning: #fab219;
+  --viz-serious: #ec835a;
+  --viz-critical: #d03b3b;
+  --viz-delta-good: #006300;
+  --viz-delta-bad: #b42323;
+  --viz-div-neg: #2a78d6;
+  --viz-div-pos: #e34948;
+}
+
+[data-mantine-color-scheme='dark'] {
+  --viz-page: #0d0d0d;
+  --viz-surface: #1a1a19;
+  --viz-text-1: #f0efec;
+  --viz-text-2: #c3c2b7;
+  --viz-muted: #898781;
+  --viz-grid: #2c2c2a;
+  --viz-axis: #383835;
+  --viz-border: rgba(255, 255, 255, 0.1);
+  --viz-s1: #3987e5;
+  --viz-s2: #d95926;
+  --viz-s3: #199e70;
+  --viz-s4: #c98500;
+  --viz-s5: #d55181;
+  --viz-s1-wash: rgba(57, 135, 229, 0.12);
+  --viz-delta-good: #0ca30c;
+  --viz-delta-bad: #e66767;
+  --viz-div-neg: #3987e5;
+  --viz-div-pos: #e66767;
+}
+
+body {
+  background: var(--viz-page);
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+.num {
+  font-variant-numeric: tabular-nums;
+}
+
+.hero-figure {
+  font-size: 52px;
+  line-height: 1.05;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--viz-text-1);
+}
+
+.stat-value {
+  font-size: 26px;
+  line-height: 1.15;
+  font-weight: 600;
+  color: var(--viz-text-1);
+}
+
+.card {
+  background: var(--viz-surface);
+  border: 1px solid var(--viz-border);
+  border-radius: 12px;
+}
+
+.clickable-row {
+  cursor: pointer;
+}
+
+.mono {
+  font-family: ui-monospace, SFMono-Regular, 'Cascadia Mono', Menlo, Consolas, monospace;
+  font-size: 12px;
+}
+
+.legend-key {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  margin-right: 6px;
+  vertical-align: -1px;
+}
+
+.legend-line {
+  display: inline-block;
+  width: 14px;
+  height: 2px;
+  border-radius: 1px;
+  margin-right: 6px;
+  vertical-align: 3px;
+}

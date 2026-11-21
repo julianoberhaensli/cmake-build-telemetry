@@ -1,0 +1,655 @@
+{
+ "schema": "build-telemetry/bundle@1",
+ "bundleId": "b39134b7-4a2c-5d01-b8a7-6a6524332412",
+ "createdAt": "2026-11-21T10:44:26Z",
+ "hook": "postCMakeBuild",
+ "dataVersion": {
+  "major": 1,
+  "minor": 1
+ },
+ "client": {
+  "name": "BuildTelemetry.cmake",
+  "version": "1.0.0",
+  "mode": "project",
+  "detail": "nocommands",
+  "anonymized": false
+ },
+ "machine": {
+  "id": "5f3c0a9e2b7d4e1f8a6c3b2d1e0f9a8b",
+  "hostname": "build-host",
+  "user": "b9dc08f012df6261",
+  "cpuModel": "13th Gen Intel(R) Core(TM) i9-13900K",
+  "osPrettyName": "Windows 11 Pro 26H2"
+ },
+ "system": {
+  "OSName": "Windows",
+  "OSPlatform": "AMD64",
+  "OSRelease": "10.0.26300",
+  "OSVersion": "Windows 10",
+  "familyId": "6",
+  "hostname": "build-host",
+  "is64Bits": true,
+  "modelId": "7",
+  "modelName": null,
+  "numberOfLogicalCPU": 32,
+  "numberOfPhysicalCPU": 24,
+  "processorAPICID": 49,
+  "processorCacheSize": null,
+  "processorClockFrequency": 3000.0,
+  "processorName": "Pentium III (0.25 micron)",
+  "totalPhysicalMemory": 32451,
+  "totalVirtualMemory": 22528,
+  "vendorID": "Intel Corporation",
+  "vendorString": "GenuineIntel"
+ },
+ "project": {
+  "name": "TelemetryDemo",
+  "sourceDir": "C:/work/repo/samples/demo-project",
+  "buildDir": "C:/work/scratch/b-nocommands"
+ },
+ "build": {
+  "generator": "Ninja",
+  "buildTool": "1.13.2.git.kitware.jobserver-pipe-1",
+  "buildType": null,
+  "configurationTypes": null,
+  "cmakeVersion": "4.4.5",
+  "compilerLauncher": null,
+  "linkerType": null,
+  "toolchainFile": null,
+  "unityBuild": null,
+  "ipo": null,
+  "compilers": {
+   "CXX": {
+    "id": "GNU",
+    "version": "13.2.0",
+    "frontendVariant": "GNU",
+    "architecture": "x86_64",
+    "linkerId": null,
+    "linkerVersion": null,
+    "executable": "g++.exe"
+   },
+   "C": null
+  }
+ },
+ "vcs": {
+  "branch": null,
+  "commit": null
+ },
+ "ci": {
+  "isCI": false,
+  "provider": null,
+  "url": null,
+  "job": null,
+  "runner": null
+ },
+ "tags": {},
+ "snippets": [
+  {
+   "cmakeContent": "content/cmake-2026-11-21T10-44-19-0831.json",
+   "duration": 6183,
+   "result": 0,
+   "role": "cmakeBuild",
+   "timeStart": 1795257860180,
+   "version": {
+    "major": 1,
+    "minor": 1
+   },
+   "workingDir": "C:/work/repo"
+  },
+  {
+   "cmakeContent": "content/cmake-2026-11-21T10-44-19-0831.json",
+   "config": "",
+   "duration": 387,
+   "language": "C++",
+   "outputSizes": [
+    31651
+   ],
+   "outputs": [
+    "CMakeFiles/core.dir/src/core/config.cpp.obj"
+   ],
+   "result": 0,
+   "role": "compile",
+   "source": "C:/work/repo/samples/demo-project/src/core/config.cpp",
+   "target": "core",
+   "targetLabels": [],
+   "timeStart": 1795257860314,
+   "version": {
+    "major": 1,
+    "minor": 1
+   },
+   "workingDir": "C:/work/scratch/b-nocommands"
+  },
+  {
+   "cmakeContent": "content/cmake-2026-11-21T10-44-19-0831.json",
+   "config": "",
+   "duration": 429,
+   "language": "C++",
+   "outputSizes": [
+    6490
+   ],
+   "outputs": [
+    "CMakeFiles/text.dir/src/text/formatter.cpp.obj"
+   ],
+   "result": 0,
+   "role": "compile",
+   "source": "C:/work/repo/samples/demo-project/src/text/formatter.cpp",
+   "target": "text",
+   "targetLabels": [],
+   "timeStart": 1795257860335,
+   "version": {
+    "major": 1,
+    "minor": 1
+   },
+   "workingDir": "C:/work/scratch/b-nocommands"
+  },
+  {
+   "cmakeContent": "content/cmake-2026-11-21T10-44-19-0831.json",
+   "config": "",
+   "duration": 391,
+   "language": "C++",
+   "outputSizes": [
+    24675
+   ],
+   "outputs": [
+    "CMakeFiles/demo_cli.dir/apps/cli.cpp.obj"
+   ],
+   "result": 0,
+   "role": "compile",
+   "source": "C:/work/repo/samples/demo-project/apps/cli.cpp",
+   "target": "demo_cli",
+   "targetLabels": [],
+   "timeStart": 1795257860364,
+   "version": {
+    "major": 1,
+    "minor": 1
+   },
+   "workingDir": "C:/work/scratch/b-nocommands"
+  },
+  {
+   "cmakeContent": "content/cmake-2026-11-21T10-44-19-0831.json",
+   "config": "",
+   "duration": 1387,
+   "language": "C++",
+   "outputSizes": [
+    2171254
+   ],
+   "outputs": [
+    "CMakeFiles/text.dir/src/text/tokenizer.cpp.obj"
+   ],
+   "result": 0,
+   "role": "compile",
+   "source": "C:/work/repo/samples/demo-project/src/text/tokenizer.cpp",
+   "target": "text",
+   "targetLabels": [],
+   "timeStart": 1795257860327,
+   "version": {
+    "major": 1,
+    "minor": 1
+   },
+   "workingDir": "C:/work/scratch/b-nocommands"
+  },
+  {
+   "cmakeContent": "content/cmake-2026-11-21T10-44-19-0831.json",
+   "config": "",
+   "duration": 356,
+   "language": "C++",
+   "outputSizes": [
+    10158
+   ],
+   "outputs": [
+    "CMakeFiles/numeric.dir/src/numeric/stats.cpp.obj"
+   ],
+   "result": 0,
+   "role": "compile",
+   "source": "C:/work/repo/samples/demo-project/src/numeric/stats.cpp",
+   "target": "numeric",
+   "targetLabels": [],
+   "timeStart": 1795257860346,
+   "version": {
+    "major": 1,
+    "minor": 1
+   },
+   "workingDir": "C:/work/scratch/b-nocommands"
+  },
+  {
+   "cmakeContent": "content/cmake-2026-11-21T10-44-19-0831.json",
+   "config": "",
+   "duration": 2205,
+   "language": "C++",
+   "outputSizes": [
+    4044325
+   ],
+   "outputs": [
+    "CMakeFiles/text.dir/src/text/regex_rules.cpp.obj"
+   ],
+   "result": 0,
+   "role": "compile",
+   "source": "C:/work/repo/samples/demo-project/src/text/regex_rules.cpp",
+   "target": "text",
+   "targetLabels": [],
+   "timeStart": 1795257860320,
+   "version": {
+    "major": 1,
+    "minor": 1
+   },
+   "workingDir": "C:/work/scratch/b-nocommands"
+  },
+  {
+   "cmakeContent": "content/cmake-2026-11-21T10-44-19-0831.json",
+   "config": "",
+   "duration": 422,
+   "language": "C++",
+   "outputSizes": [
+    27987
+   ],
+   "outputs": [
+    "CMakeFiles/demo_bench.dir/apps/bench.cpp.obj"
+   ],
+   "result": 0,
+   "role": "compile",
+   "source": "C:/work/repo/samples/demo-project/apps/bench.cpp",
+   "target": "demo_bench",
+   "targetLabels": [],
+   "timeStart": 1795257860372,
+   "version": {
+    "major": 1,
+    "minor": 1
+   },
+   "workingDir": "C:/work/scratch/b-nocommands"
+  },
+  {
+   "cmakeContent": "content/cmake-2026-11-21T10-44-19-0831.json",
+   "config": "",
+   "duration": 222,
+   "language": "C++",
+   "outputSizes": [
+    3322
+   ],
+   "outputs": [
+    "CMakeFiles/numeric.dir/src/numeric/matrix.cpp.obj"
+   ],
+   "result": 0,
+   "role": "compile",
+   "source": "C:/work/repo/samples/demo-project/src/numeric/matrix.cpp",
+   "target": "numeric",
+   "targetLabels": [],
+   "timeStart": 1795257860343,
+   "version": {
+    "major": 1,
+    "minor": 1
+   },
+   "workingDir": "C:/work/scratch/b-nocommands"
+  },
+  {
+   "cmakeContent": "content/cmake-2026-11-21T10-44-19-0831.json",
+   "config": "",
+   "duration": 499,
+   "language": "C++",
+   "outputSizes": [
+    38557
+   ],
+   "outputs": [
+    "CMakeFiles/numeric.dir/src/numeric/meta.cpp.obj"
+   ],
+   "result": 0,
+   "role": "compile",
+   "source": "C:/work/repo/samples/demo-project/src/numeric/meta.cpp",
+   "target": "numeric",
+   "targetLabels": [],
+   "timeStart": 1795257860357,
+   "version": {
+    "major": 1,
+    "minor": 1
+   },
+   "workingDir": "C:/work/scratch/b-nocommands"
+  },
+  {
+   "cmakeContent": "content/cmake-2026-11-21T10-44-19-0831.json",
+   "config": "",
+   "duration": 344,
+   "language": "C++",
+   "outputSizes": [
+    5738
+   ],
+   "outputs": [
+    "CMakeFiles/core.dir/src/core/hashing.cpp.obj"
+   ],
+   "result": 0,
+   "role": "compile",
+   "source": "C:/work/repo/samples/demo-project/src/core/hashing.cpp",
+   "target": "core",
+   "targetLabels": [],
+   "timeStart": 1795257860311,
+   "version": {
+    "major": 1,
+    "minor": 1
+   },
+   "workingDir": "C:/work/scratch/b-nocommands"
+  },
+  {
+   "cmakeContent": "content/cmake-2026-11-21T10-44-19-0831.json",
+   "config": "",
+   "duration": 403,
+   "language": "C++",
+   "outputSizes": [
+    55641
+   ],
+   "outputs": [
+    "CMakeFiles/core.dir/src/core/strings.cpp.obj"
+   ],
+   "result": 0,
+   "role": "compile",
+   "source": "C:/work/repo/samples/demo-project/src/core/strings.cpp",
+   "target": "core",
+   "targetLabels": [],
+   "timeStart": 1795257860300,
+   "version": {
+    "major": 1,
+    "minor": 1
+   },
+   "workingDir": "C:/work/scratch/b-nocommands"
+  },
+  {
+   "cmakeContent": "content/cmake-2026-11-21T10-44-19-0831.json",
+   "duration": 1287,
+   "result": 0,
+   "role": "configure",
+   "timeStart": 1795257858506,
+   "version": {
+    "major": 1,
+    "minor": 1
+   },
+   "workingDir": "C:/work/repo"
+  },
+  {
+   "cmakeContent": "content/cmake-2026-11-21T10-44-19-0831.json",
+   "duration": 36,
+   "result": 0,
+   "role": "generate",
+   "timeStart": 1795257859796,
+   "version": {
+    "major": 1,
+    "minor": 1
+   },
+   "workingDir": "C:/work/repo"
+  },
+  {
+   "cmakeContent": "content/cmake-2026-11-21T10-44-19-0831.json",
+   "config": "",
+   "duration": 958,
+   "language": "C++",
+   "outputSizes": [
+    6792854
+   ],
+   "outputs": [
+    "libtext.a"
+   ],
+   "result": 0,
+   "role": "link",
+   "target": "text",
+   "targetLabels": [],
+   "timeStart": 1795257862691,
+   "version": {
+    "major": 1,
+    "minor": 1
+   },
+   "workingDir": "C:/work/scratch/b-nocommands"
+  },
+  {
+   "cmakeContent": "content/cmake-2026-11-21T10-44-19-0831.json",
+   "config": "",
+   "duration": 24,
+   "language": "C++",
+   "outputSizes": [
+    101564
+   ],
+   "outputs": [
+    "libcore.a"
+   ],
+   "result": 0,
+   "role": "link",
+   "target": "core",
+   "targetLabels": [],
+   "timeStart": 1795257860827,
+   "version": {
+    "major": 1,
+    "minor": 1
+   },
+   "workingDir": "C:/work/scratch/b-nocommands"
+  },
+  {
+   "cmakeContent": "content/cmake-2026-11-21T10-44-19-0831.json",
+   "config": "",
+   "duration": 27,
+   "language": "C++",
+   "outputSizes": [
+    0
+   ],
+   "outputs": [
+    "libtext.a"
+   ],
+   "result": 0,
+   "role": "link",
+   "target": "text",
+   "targetLabels": [],
+   "timeStart": 1795257862606,
+   "version": {
+    "major": 1,
+    "minor": 1
+   },
+   "workingDir": "C:/work/scratch/b-nocommands"
+  },
+  {
+   "cmakeContent": "content/cmake-2026-11-21T10-44-19-0831.json",
+   "config": "",
+   "duration": 26,
+   "language": "C++",
+   "outputSizes": [
+    0
+   ],
+   "outputs": [
+    "libnumeric.a"
+   ],
+   "result": 0,
+   "role": "link",
+   "target": "numeric",
+   "targetLabels": [],
+   "timeStart": 1795257860957,
+   "version": {
+    "major": 1,
+    "minor": 1
+   },
+   "workingDir": "C:/work/scratch/b-nocommands"
+  },
+  {
+   "cmakeContent": "content/cmake-2026-11-21T10-44-19-0831.json",
+   "config": "",
+   "duration": 30,
+   "language": "C++",
+   "outputSizes": [
+    0
+   ],
+   "outputs": [
+    "libcore.a"
+   ],
+   "result": 0,
+   "role": "link",
+   "target": "core",
+   "targetLabels": [],
+   "timeStart": 1795257860767,
+   "version": {
+    "major": 1,
+    "minor": 1
+   },
+   "workingDir": "C:/work/scratch/b-nocommands"
+  },
+  {
+   "cmakeContent": "content/cmake-2026-11-21T10-44-19-0831.json",
+   "config": "",
+   "duration": 1603,
+   "language": "C++",
+   "outputSizes": [
+    2509412
+   ],
+   "outputs": [
+    "demo_cli.exe"
+   ],
+   "result": 0,
+   "role": "link",
+   "target": "demo_cli",
+   "targetLabels": [],
+   "timeStart": 1795257864750,
+   "version": {
+    "major": 1,
+    "minor": 1
+   },
+   "workingDir": "C:/work/scratch/b-nocommands"
+  },
+  {
+   "cmakeContent": "content/cmake-2026-11-21T10-44-19-0831.json",
+   "config": "",
+   "duration": 22,
+   "language": "C++",
+   "outputSizes": [
+    58530
+   ],
+   "outputs": [
+    "libnumeric.a"
+   ],
+   "result": 0,
+   "role": "link",
+   "target": "numeric",
+   "targetLabels": [],
+   "timeStart": 1795257861067,
+   "version": {
+    "major": 1,
+    "minor": 1
+   },
+   "workingDir": "C:/work/scratch/b-nocommands"
+  },
+  {
+   "cmakeContent": "content/cmake-2026-11-21T10-44-19-0831.json",
+   "config": "",
+   "duration": 24,
+   "language": "C++",
+   "outputSizes": [
+    101564
+   ],
+   "outputs": [
+    "libcore.a"
+   ],
+   "result": 0,
+   "role": "link",
+   "target": "core",
+   "targetLabels": [],
+   "timeStart": 1795257860882,
+   "version": {
+    "major": 1,
+    "minor": 1
+   },
+   "workingDir": "C:/work/scratch/b-nocommands"
+  },
+  {
+   "cmakeContent": "content/cmake-2026-11-21T10-44-19-0831.json",
+   "config": "",
+   "duration": 103,
+   "language": "C++",
+   "outputSizes": [
+    82329
+   ],
+   "outputs": [
+    "demo_bench.exe"
+   ],
+   "result": 0,
+   "role": "link",
+   "target": "demo_bench",
+   "targetLabels": [],
+   "timeStart": 1795257861152,
+   "version": {
+    "major": 1,
+    "minor": 1
+   },
+   "workingDir": "C:/work/scratch/b-nocommands"
+  },
+  {
+   "cmakeContent": "content/cmake-2026-11-21T10-44-19-0831.json",
+   "config": "",
+   "duration": 25,
+   "language": "C++",
+   "outputSizes": [
+    58530
+   ],
+   "outputs": [
+    "libnumeric.a"
+   ],
+   "result": 0,
+   "role": "link",
+   "target": "numeric",
+   "targetLabels": [],
+   "timeStart": 1795257861013,
+   "version": {
+    "major": 1,
+    "minor": 1
+   },
+   "workingDir": "C:/work/scratch/b-nocommands"
+  },
+  {
+   "cmakeContent": "content/cmake-2026-11-21T10-44-19-0831.json",
+   "config": "",
+   "duration": 964,
+   "language": "C++",
+   "outputSizes": [
+    6792854
+   ],
+   "outputs": [
+    "libtext.a"
+   ],
+   "result": 0,
+   "role": "link",
+   "target": "text",
+   "targetLabels": [],
+   "timeStart": 1795257863706,
+   "version": {
+    "major": 1,
+    "minor": 1
+   },
+   "workingDir": "C:/work/scratch/b-nocommands"
+  }
+ ],
+ "roleStats": {},
+ "content": [
+  {
+   "file": "content/cmake-2026-11-21T10-44-19-0831.json",
+   "data": {
+    "custom": {},
+    "project": "TelemetryDemo",
+    "targets": {
+     "core": {
+      "labels": [],
+      "type": "STATIC_LIBRARY"
+     },
+     "demo_bench": {
+      "labels": [],
+      "type": "EXECUTABLE"
+     },
+     "demo_cli": {
+      "labels": [],
+      "type": "EXECUTABLE"
+     },
+     "numeric": {
+      "labels": [],
+      "type": "STATIC_LIBRARY"
+     },
+     "text": {
+      "labels": [],
+      "type": "STATIC_LIBRARY"
+     }
+    },
+    "version": {
+     "major": 1,
+     "minor": 1
+    }
+   }
+  }
+ ]
+}

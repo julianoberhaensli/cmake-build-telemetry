@@ -1,0 +1,124 @@
+import { ActionIcon, AppShell, Burger, Group, NavLink, Text, Tooltip, useComputedColorScheme, useMantineColorScheme } from '@mantine/core';
+import { useDisclosure } from '@mantine/hooks';
+import {
+  IconApi,
+  IconArrowsDiff,
+  IconDeviceDesktopAnalytics,
+  IconFlame,
+  IconLayoutDashboard,
+  IconListDetails,
+  IconLogout,
+  IconMoon,
+  IconPlugConnected,
+  IconServer2,
+  IconSun,
+} from '@tabler/icons-react';
+import { Link, Route, Routes, useLocation } from 'react-router';
+import { useMe } from './api/hooks';
+import { BuildDetailPage } from './pages/BuildDetailPage';
+import { BuildsPage } from './pages/BuildsPage';
+import { ComparePage } from './pages/ComparePage';
+import { HotspotsPage } from './pages/HotspotsPage';
+import { MachineDetailPage } from './pages/MachineDetailPage';
+import { MachinesPage } from './pages/MachinesPage';
+import { OverviewPage } from './pages/OverviewPage';
+import { SetupPage } from './pages/SetupPage';
+import { Empty } from './components/Ui';
+
+const NAV = [
+  { to: '/', label: 'Overview', icon: IconLayoutDashboard, exact: true },
+  { to: '/builds', label: 'Builds', icon: IconListDetails },
+  { to: '/machines', label: 'Machines', icon: IconServer2 },
+  { to: '/hotspots', label: 'Hotspots', icon: IconFlame },
+  { to: '/compare', label: 'Compare', icon: IconArrowsDiff },
+  { to: '/setup', label: 'Connect builds', icon: IconPlugConnected },
+];
+
+/** Keep the global filter (range, project, …) when moving between list pages. */
+const KEEP = ['range', 'project', 'branch', 'source', 'kind', 'buildType'];
+
+export function App() {
+  const [opened, { toggle, close }] = useDisclosure();
+  const location = useLocation();
+  const { setColorScheme } = useMantineColorScheme();
+  // resolved scheme ('auto' follows the OS), so the toggle always flips what is on screen
+  const colorScheme = useComputedColorScheme('light', { getInitialValueInEffect: true });
+  const { data: me } = useMe();
+  const current = new URLSearchParams(location.search);
+  const carry = new URLSearchParams();
+  KEEP.forEach((k) => current.get(k) && carry.set(k, current.get(k)!));
+  const suffix = carry.toString() ? `?${carry}` : '';
+
+  return (
+    <AppShell header={{ height: 56 }} navbar={{ width: 220, breakpoint: 'sm', collapsed: { mobile: !opened } }} padding="lg">
+      <AppShell.Header>
+        <Group h="100%" px="md" justify="space-between">
+          <Group gap="sm">
+            <Burger opened={opened} onClick={toggle} hiddenFrom="sm" size="sm" />
+            <IconDeviceDesktopAnalytics size={22} color="var(--viz-s1)" />
+            <Text fw={700}>Build Telemetry</Text>
+          </Group>
+          <Group gap="xs">
+            {me?.authenticated && (
+              <Text size="sm" c="dimmed">
+                {me.name}
+              </Text>
+            )}
+            <Tooltip label="API reference">
+              <ActionIcon component="a" href="/api/docs" variant="subtle" color="gray" aria-label="API reference">
+                <IconApi size={18} />
+              </ActionIcon>
+            </Tooltip>
+            <Tooltip label={colorScheme === 'dark' ? 'Light mode' : 'Dark mode'}>
+              <ActionIcon
+                variant="subtle"
+                color="gray"
+                onClick={() => setColorScheme(colorScheme === 'dark' ? 'light' : 'dark')}
+                aria-label="Toggle color scheme"
+              >
+                {colorScheme === 'dark' ? <IconSun size={18} /> : <IconMoon size={18} />}
+              </ActionIcon>
+            </Tooltip>
+            {me?.authMode === 'oidc' && me.authenticated && (
+              <Tooltip label="Sign out">
+                <ActionIcon component="a" href="/auth/logout" variant="subtle" color="gray" aria-label="Sign out">
+                  <IconLogout size={18} />
+                </ActionIcon>
+              </Tooltip>
+            )}
+          </Group>
+        </Group>
+      </AppShell.Header>
+      <AppShell.Navbar p="sm">
+        {NAV.map((n) => {
+          const active = n.exact ? location.pathname === n.to : location.pathname.startsWith(n.to);
+          return (
+            <NavLink
+              key={n.to}
+              component={Link}
+              to={n.to + (n.to === '/setup' || n.to === '/compare' ? '' : suffix)}
+              label={n.label}
+              leftSection={<n.icon size={18} stroke={1.6} />}
+              active={active}
+              onClick={close}
+              style={{ borderRadius: 8 }}
+            />
+          );
+        })}
+      </AppShell.Navbar>
+      <AppShell.Main maw={1600}>
+        <Routes>
+          <Route path="/" element={<OverviewPage />} />
+          <Route path="/builds" element={<BuildsPage />} />
+          <Route path="/builds/:id" element={<BuildDetailPage />} />
+          <Route path="/machines" element={<MachinesPage />} />
+          <Route path="/machines/:id" element={<MachineDetailPage />} />
+          <Route path="/hotspots" element={<HotspotsPage />} />
+          <Route path="/compare" element={<ComparePage />} />
+          <Route path="/setup" element={<SetupPage />} />
+          <Route path="*" element={<Empty>Page not found.</Empty>} />
+        </Routes>
+      </AppShell.Main>
+    </AppShell>
+  );
+}
