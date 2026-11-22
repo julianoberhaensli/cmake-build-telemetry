@@ -42,9 +42,9 @@ cmake -P BuildTelemetry.cmake uninstall
 ```
 
 `install` copies the module and a `settings.txt` to `<CMAKE_CONFIG_DIR>/build-telemetry/`. It
-writes a user-level instrumentation query (data version 1.0, works on every CMake ≥ 4.3) plus
-a companion query with data version 1.2 that only adds `processMetrics` and is ignored by
-CMake versions that don't know it. `CMAKE_CONFIG_DIR` defaults to `%LOCALAPPDATA%\CMake`
+writes a user-level instrumentation query with data version 1, which every CMake ≥ 4.3 accepts
+(including 4.3.0). Machine mode therefore doesn't collect `processMetrics`; project mode does on
+CMake 4.5+. `CMAKE_CONFIG_DIR` defaults to `%LOCALAPPDATA%\CMake`
 (Windows), `~/Library/Application Support/CMake` (macOS) or `~/.config/cmake` (Linux).
 
 The callback runs with the `cmake` that executed `install`. Re-run `install` after replacing

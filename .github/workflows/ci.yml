@@ -53,6 +53,21 @@ jobs:
           npm ci --no-audit --no-fund
           npm run build
 
+  # The client with older CMake releases (project and machine mode). The instrumentation query
+  # must be accepted by every CMake >= 4.3; 4.3.0-4.3.2 reject formats that later ones accept.
+  client-compat:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        cmake: ["4.3.0", "4.3.2", "4.3.4", "4.4.0"]
+    steps:
+      - uses: actions/checkout@v7
+      - name: Tools (CMake ${{ matrix.cmake }}, Ninja)
+        run: pipx install "cmake==${{ matrix.cmake }}" && pipx install ninja && cmake --version
+      - name: Configure and build with the client
+        run: bash tests/client-compat.sh
+
   # Real CMake/Ninja builds against the server started from source (Linux + macOS clients).
   e2e:
     needs: [server, dashboard]
@@ -106,7 +121,7 @@ jobs:
   #   main     -> :latest, :sha-<commit>
   #   v1.2.3   -> :1.2.3, :1.2, :sha-<commit>
   image:
-    needs: [server, dashboard, e2e]
+    needs: [server, dashboard, client-compat, e2e]
     runs-on: ubuntu-24.04
     permissions:
       contents: read

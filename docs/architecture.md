@@ -16,12 +16,15 @@ The client uses the **file-based query API**. It writes
 call `cmake_instrumentation()`. Reasons:
 
 * the command's signature changed during the experimental phase, and a wrong call is a *fatal*
-  configure error, while a query file CMake does not understand is simply ignored;
+  configure error; a query file only has to use a format every CMake ≥ 4.3 accepts;
 * the same mechanism instruments builds without touching the project (machine mode);
-* the data version is chosen per CMake version (4.3 → 1.0, 4.4 → 1.1, 4.5+ → 1.2 with
-  `processMetrics`). In machine mode a second query file with data version 1.2 adds
-  `processMetrics` only where CMake understands it, because queries with unknown data versions
-  are ignored.
+* the query requests data version `1`, the one form every CMake ≥ 4.3 accepts. CMake 4.3.0–4.3.2
+  reject the `{ "major": 1, "minor": N }` object with a *fatal* error, even though the
+  documentation of later 4.3 releases allows it. CMake always writes its newest data version, so
+  nothing is lost. Only project mode on CMake 4.5+ requests `{ "major": 1, "minor": 2 }` with
+  `processMetrics`, because there the configuring CMake reads the query itself. A machine-mode
+  query is read by every CMake of the user, so it never does. `tests/client-compat.sh` runs in
+  CI with CMake 4.3.0, 4.3.2, 4.3.4 and 4.4.0.
 
 Hooks: `postBuild` (plain `ninja`/`make`) and `postCMakeBuild` (`cmake --build`). `postBuild`
 does not fire under `cmake --build`, so the two never double-count.

@@ -40,7 +40,7 @@
 # Organisations may set a default endpoint here when vendoring the file
 # (the server's /api/v1/client/BuildTelemetry.cmake download does this).
 set(_BT_DEFAULT_URL "")
-set(_BT_CLIENT_VERSION "1.0.0")
+set(_BT_CLIENT_VERSION "1.0.1")
 
 if(CMAKE_VERSION VERSION_LESS 3.24)
   if(NOT CMAKE_SCRIPT_MODE_FILE)
@@ -1132,12 +1132,20 @@ function(_bt_query_json out cmake_exe self settings_file data_minor with_process
   if(with_dynamic)
     string(APPEND options ",\"dynamicSystemInformation\"")
   endif()
+  # CMake 4.3.0 accepts only an integer version (the {major, minor} object came in a
+  # later 4.3 patch). CMake always writes its newest data version anyway, so the object
+  # is needed only for options that a minor version introduced (processMetrics: 1.2).
+  if(data_minor EQUAL 0)
+    set(version "1")
+  else()
+    set(version "{\"major\":1,\"minor\":${data_minor}}")
+  endif()
   if(hooks_and_callback)
     set(cb "\"${cmake_exe}\" -DBT_MODE=callback \"-DBT_SETTINGS=${settings_file}\" -P \"${self}\"")
     _bt_json_str(cbq "${cb}")
-    set(body "\"version\":{\"major\":1,\"minor\":${data_minor}},\"hooks\":[\"postBuild\",\"postCMakeBuild\"],\"options\":[${options}],\"callbacks\":[${cbq}]")
+    set(body "\"version\":${version},\"hooks\":[\"postBuild\",\"postCMakeBuild\"],\"options\":[${options}],\"callbacks\":[${cbq}]")
   else()
-    set(body "\"version\":{\"major\":1,\"minor\":${data_minor}},\"options\":[${options}]")
+    set(body "\"version\":${version},\"options\":[${options}]")
   endif()
   set(${out} "{${body}}\n" PARENT_SCOPE)
 endfunction()
@@ -1189,12 +1197,11 @@ function(_bt_cmd_install)
   file(COPY_FILE "${CMAKE_CURRENT_FUNCTION_LIST_FILE}" "${home}/BuildTelemetry.cmake" ONLY_IF_DIFFERENT)
   _bt_write_settings("${home}/settings.txt" machine "${BT_URL}" "${BT_TOKEN}" "${BT_DETAIL}" "${BT_TAGS}")
   _bt_truthy(dyn "${BUILD_TELEMETRY_DYNAMIC_SYSINFO}")
-  # Data version 1.0 works on every CMake >= 4.3; the 1.2 companion file only
-  # adds processMetrics and is ignored by CMake versions that do not know it.
+  # Every CMake >= 4.3 of this user reads this query, so it must be valid for all of
+  # them: plain version 1, no processMetrics (CMake 4.3.0 rejects a 1.2 query outright).
   _bt_query_json(q "${CMAKE_COMMAND}" "${home}/BuildTelemetry.cmake" "${home}/settings.txt" 0 FALSE ${dyn} TRUE)
   file(WRITE "${cfg}/instrumentation/v1/query/build-telemetry.json" "${q}")
-  _bt_query_json(q2 "" "" "" 2 TRUE FALSE FALSE)
-  file(WRITE "${cfg}/instrumentation/v1/query/build-telemetry-metrics.json" "${q2}")
+  file(REMOVE "${cfg}/instrumentation/v1/query/build-telemetry-metrics.json")  # written by client 1.0.0
   message(STATUS "BuildTelemetry ${_BT_CLIENT_VERSION} installed for this user")
   message(STATUS "  endpoint : ${BT_URL}")
   message(STATUS "  detail   : ${BT_DETAIL}")
@@ -1417,12 +1424,10 @@ function(_bt_project_main)
   configure_file("${CMAKE_CURRENT_FUNCTION_LIST_FILE}" "${state_dir}/BuildTelemetry.cmake" COPYONLY)
   _bt_write_settings("${state_dir}/settings.txt" project "${url}" "${token}" "${detail}" "${BUILD_TELEMETRY_TAGS}")
 
+  # The configuring CMake reads this query itself, so 4.5+ may ask for data 1.2 (processMetrics).
   if(CMAKE_VERSION VERSION_GREATER_EQUAL 4.5)
     set(minor 2)
     set(pm TRUE)
-  elseif(CMAKE_VERSION VERSION_GREATER_EQUAL 4.4)
-    set(minor 1)
-    set(pm FALSE)
   else()
     set(minor 0)
     set(pm FALSE)

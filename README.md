@@ -81,7 +81,7 @@ cmake -DBUILD_TELEMETRY_URL=https://build-telemetry.example.com -P BuildTelemetr
 | Requirement | How it is met |
 |---|---|
 | Never breaks the build | CMake < 4.3, an unsupported generator (Visual Studio, Xcode) or a missing endpoint: one status line, nothing else. All runtime operations are non-fatal, and CMake ignores the callback's exit code (verified). |
-| Old `cmake_minimum_required` | Policies are scoped inside the module, so a project with `cmake_minimum_required(VERSION 3.16)` works unchanged (tested with CMake 3.22, 3.28, 4.2, 4.4). |
+| Old `cmake_minimum_required` | Policies are scoped inside the module, so a project with `cmake_minimum_required(VERSION 3.16)` works unchanged (tested with CMake 3.22, 3.28, 4.2 and every 4.3/4.4 release from 4.3.0 on; CI keeps testing 4.3.0, 4.3.2, 4.3.4, 4.4.0 and the newest). |
 | Server unreachable | Bundles stay in a per-build-tree spool and are retried with exponential back-off (1 min … 1 h). The spool is capped (50 bundles, 14 days). |
 | Minimal overhead | The client adds nothing to a `ninja` build: CMake runs the callback in its own background daemon after ninja has returned. With `cmake --build`, the blocking part only hard-links the snippet files and starts a detached uploader. CMake's own per-command wrapper is the dominant cost: **+5–6 %** measured on a Windows build of heavy translation units (more for tiny ones). See [docs/architecture.md](docs/architecture.md#3-performance). |
 | Disable | `-DBUILD_TELEMETRY=OFF` removes the instrumentation query. `BUILD_TELEMETRY=OFF` / `DO_NOT_TRACK=1` in the environment skips collection at configure and build time. |
