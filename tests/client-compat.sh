@@ -45,6 +45,33 @@ ninja -C "$W/p" >> "$W/p.log" 2>&1 || { cat "$W/p.log"; fail "project mode: buil
 wait_bundle "$W/p/.cmake/build-telemetry/spool" || { cat "$W/p.log"; fail "project mode: no bundle collected"; }
 echo "project mode: ok"
 
+# opt-in: the project defaults the option to OFF, the environment switches it on and off
+# (before machine mode: its user-level query would instrument every build)
+mkdir -p "$W/optin" && cp "$W/src/main.cpp" "$W/optin/"
+cat > "$W/optin/CMakeLists.txt" <<EOF
+cmake_minimum_required(VERSION 3.20)
+project(optin CXX)
+option(BUILD_TELEMETRY "Upload build telemetry" OFF)
+include("$CLIENT")
+add_executable(hello main.cpp)
+EOF
+configure_optin() { # [VAR=value ...]: reconfigure the same build tree with exactly this environment
+  env -u BUILD_TELEMETRY -u DO_NOT_TRACK "$@" cmake -S "$(native "$W/optin")" -B "$(native "$W/o")" -G Ninja \
+    -DBUILD_TELEMETRY_URL=http://127.0.0.1:9 >> "$W/o.log" 2>&1 || { cat "$W/o.log"; fail "opt-in: configure failed ($*)"; }
+}
+instrumented() { grep -q -- '--instrument' "$W/o/build.ninja"; }
+configure_optin
+! instrumented || fail "opt-in: instrumented without BUILD_TELEMETRY=ON"
+configure_optin BUILD_TELEMETRY=ON
+instrumented || fail "opt-in: BUILD_TELEMETRY=ON did not enable it"
+ninja -C "$W/o" >> "$W/o.log" 2>&1 || { cat "$W/o.log"; fail "opt-in: build failed"; }
+wait_bundle "$W/o/.cmake/build-telemetry/spool" || { cat "$W/o.log"; fail "opt-in: no bundle collected"; }
+configure_optin BUILD_TELEMETRY=ON DO_NOT_TRACK=1
+! instrumented || fail "opt-in: DO_NOT_TRACK=1 did not win over BUILD_TELEMETRY=ON"
+configure_optin
+! instrumented || fail "opt-in: still instrumented after BUILD_TELEMETRY was unset"
+echo "opt-in: ok"
+
 # machine mode (own CMAKE_CONFIG_DIR, project without include)
 export CMAKE_CONFIG_DIR="$(native "$W/cfg")"
 cmake -DBUILD_TELEMETRY_URL=http://127.0.0.1:9 -P "$CLIENT" install > "$W/m.log" 2>&1 \

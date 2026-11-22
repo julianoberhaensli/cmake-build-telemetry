@@ -74,7 +74,18 @@ cmake -DBUILD_TELEMETRY_URL=https://build-telemetry.example.com -P BuildTelemetr
 ```
 
 **Disable** with `-DBUILD_TELEMETRY=OFF`, or set the environment variable `BUILD_TELEMETRY=OFF`
-(also honoured: `DO_NOT_TRACK=1`).
+(also honoured: `DO_NOT_TRACK=1`). Disabled at configure time, nothing is instrumented and the
+build runs exactly as without the client.
+
+**Opt-in instead of opt-out:** declare the option with `OFF` before the `include()`. Developers
+then opt in once with the environment variable `BUILD_TELEMETRY=ON`. It overrides the option in
+both directions and is read at every configure, so it also covers new build trees and deleted
+caches; a change takes effect at the next configure.
+
+```cmake
+option(BUILD_TELEMETRY "Upload build telemetry (or set the environment variable BUILD_TELEMETRY=ON)" OFF)
+include(cmake/BuildTelemetry.cmake)
+```
 
 ## Guarantees of the client
 
@@ -84,7 +95,7 @@ cmake -DBUILD_TELEMETRY_URL=https://build-telemetry.example.com -P BuildTelemetr
 | Old `cmake_minimum_required` | Policies are scoped inside the module, so a project with `cmake_minimum_required(VERSION 3.16)` works unchanged (tested with CMake 3.22, 3.28, 4.2 and every 4.3/4.4 release from 4.3.0 on; CI keeps testing 4.3.0, 4.3.2, 4.3.4, 4.4.0 and the newest). |
 | Server unreachable | Bundles stay in a per-build-tree spool and are retried with exponential back-off (1 min … 1 h). The spool is capped (50 bundles, 14 days). |
 | Minimal overhead | The client adds nothing to a `ninja` build: CMake runs the callback in its own background daemon after ninja has returned. With `cmake --build`, the blocking part only hard-links the snippet files and starts a detached uploader. CMake's own per-command wrapper is the dominant cost: **+5–6 %** measured on a Windows build of heavy translation units (more for tiny ones). See [docs/architecture.md](docs/architecture.md#3-performance). |
-| Disable | `-DBUILD_TELEMETRY=OFF` removes the instrumentation query. `BUILD_TELEMETRY=OFF` / `DO_NOT_TRACK=1` in the environment skips collection at configure and build time. |
+| Disable / opt-in | `-DBUILD_TELEMETRY=OFF` removes the instrumentation query: no wrapper, no overhead. The environment variable `BUILD_TELEMETRY` overrides the option at configure time in both directions (opt-in projects default the option to `OFF`). `BUILD_TELEMETRY=OFF` / `DO_NOT_TRACK=1` at build time also skips the upload. |
 | Privacy | The OS user is hashed. Detail levels are `full`, `nocommands` and `summary`, plus `ANONYMIZE` (hashed host, `$SRC`/`$BUILD` placeholders). Source code is never read. |
 
 ## Repository layout

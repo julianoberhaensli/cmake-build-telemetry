@@ -151,7 +151,7 @@ export function SetupPage() {
             </Table.Thead>
             <Table.Tbody>
               {[
-                ['BUILD_TELEMETRY', 'ON', 'Master switch. OFF / 0 disables (configure: removes instrumentation; build: skips upload). DO_NOT_TRACK=1 is honoured too.'],
+                ['BUILD_TELEMETRY', 'ON', 'Master switch. OFF / 0 disables (configure: removes instrumentation; build: skips upload). In the environment it overrides the CMake option, so ON opts in to a project that defaults to OFF. DO_NOT_TRACK=1 is honoured too.'],
                 ['BUILD_TELEMETRY_URL', 'this server', 'Server base URL.'],
                 ['BUILD_TELEMETRY_TOKEN', '–', 'Ingest API key (prefer the environment variable).'],
                 ['BUILD_TELEMETRY_DETAIL', 'full', 'full = per step incl. command lines · nocommands = per step without commands · summary = totals per role only.'],

@@ -28,7 +28,23 @@ At configure time the module:
 When telemetry is disabled (or the requirements are not met), the query file is **removed**,
 so CMake stops wrapping commands on the next generate. Because that changes every compile
 command line, the first build after toggling at configure time recompiles everything once.
-The environment switch `BUILD_TELEMETRY=OFF` does not touch the build graph.
+Set only for a build (not at configure), `BUILD_TELEMETRY=OFF` skips the upload without
+touching the build graph.
+
+**Opt-in.** A project that should collect data only from developers who agree declares the
+option itself, before the `include()`:
+
+```cmake
+option(BUILD_TELEMETRY "Upload build telemetry (or set the environment variable BUILD_TELEMETRY=ON)" OFF)
+include(cmake/BuildTelemetry.cmake)
+```
+
+Telemetry is then off unless the environment variable `BUILD_TELEMETRY=ON` is set. The
+environment overrides the option in both directions and is read at every configure, so one
+setting (shell profile, system environment, or `"environment"` in a `CMakeUserPresets.json`)
+covers every build tree, including new ones and deleted caches. A change takes effect at the
+next configure, because that is when the query file is written or removed. `DO_NOT_TRACK=1`
+always wins.
 
 ### Machine mode
 
@@ -64,7 +80,7 @@ override or disable without reconfiguring.
 
 | Name | Default | Description |
 |---|---|---|
-| `BUILD_TELEMETRY` | `ON` | Master switch. `OFF`/`0`/`FALSE`/`NO` disables. As a CMake option it removes the instrumentation; in the environment it is also checked by every callback. |
+| `BUILD_TELEMETRY` | `ON` | Master switch. `OFF`/`0`/`FALSE`/`NO` disables, `ON`/`1`/`TRUE`/`YES` enables. As a CMake option it adds or removes the instrumentation. In the environment it overrides the option at configure time in both directions (opt-in, see project mode) and is also checked by every callback. |
 | `DO_NOT_TRACK` | – | `1` behaves like `BUILD_TELEMETRY=OFF` ([consoledonottrack.com](https://consoledonottrack.com) convention). |
 | `BUILD_TELEMETRY_URL` | – | Server base URL. Resolution: CMake variable → environment → user `settings.txt` (machine mode) → default embedded in the downloaded file. |
 | `BUILD_TELEMETRY_TOKEN` | – | Ingest API key, sent as `Authorization: Bearer`. Prefer the environment variable. A `-D` value is stored in the build tree's `settings.txt`. |

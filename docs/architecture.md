@@ -116,9 +116,11 @@ index 0.6 s. Ingesting a 408-step bundle takes ≈ 70 ms (binary `COPY`).
 
 Practical consequences:
 
-* Toggling telemetry **at configure time** (`-DBUILD_TELEMETRY=ON/OFF`) adds or removes the
-  wrapper in every compile command, so the next build recompiles everything once. Disabling
-  through the **environment** (`BUILD_TELEMETRY=OFF`) changes nothing in the build graph: no
+* Toggling telemetry **at configure time** (`-DBUILD_TELEMETRY=ON/OFF`, or the environment
+  variable `BUILD_TELEMETRY` while configuring, which overrides the option) adds or removes the
+  wrapper in every compile command, so the next build recompiles everything once. Disabled
+  this way, the build has no wrapper and no overhead. Disabling through the environment
+  **only at build time** (`BUILD_TELEMETRY=OFF`) changes nothing in the build graph: no
   rebuild, but the wrapper cost remains.
 * If the wrapper cost matters (very large Windows builds), instrument where the data is
   needed most, for example CI runners and a sample of developer machines in machine mode.

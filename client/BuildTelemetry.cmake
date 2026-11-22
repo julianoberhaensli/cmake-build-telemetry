@@ -22,6 +22,8 @@
 #      cmake -P BuildTelemetry.cmake flush <build-dir>   # upload pending data now
 #
 #  DISABLE:  -DBUILD_TELEMETRY=OFF   or   env BUILD_TELEMETRY=OFF   or   env DO_NOT_TRACK=1
+#  OPT-IN:   option(BUILD_TELEMETRY "..." OFF) before include(), then developers set
+#            env BUILD_TELEMETRY=ON (the environment overrides the option both ways)
 #
 #  Guarantees
 #    * Never fails or changes the result of configure or build: unsupported
@@ -40,7 +42,7 @@
 # Organisations may set a default endpoint here when vendoring the file
 # (the server's /api/v1/client/BuildTelemetry.cmake download does this).
 set(_BT_DEFAULT_URL "")
-set(_BT_CLIENT_VERSION "1.0.1")
+set(_BT_CLIENT_VERSION "1.1.0")
 
 if(CMAKE_VERSION VERSION_LESS 3.24)
   if(NOT CMAKE_SCRIPT_MODE_FILE)
@@ -1366,12 +1368,19 @@ function(_bt_project_main)
   set(query_file "${query_dir}/build-telemetry.json")
   _bt_truthy(quiet "${BUILD_TELEMETRY_QUIET}")
 
+  # The environment variable BUILD_TELEMETRY overrides the option in both directions, so a
+  # project can default to OFF and each developer opts in once (it also survives a fresh
+  # build tree). DO_NOT_TRACK=1 always wins.
   set(reason "")
   _bt_env_disabled(env_off)
-  if(NOT BUILD_TELEMETRY)
-    set(reason "disabled (BUILD_TELEMETRY=OFF)")
-  elseif(env_off)
+  set(env_on FALSE)
+  if(DEFINED ENV{BUILD_TELEMETRY})
+    _bt_truthy(env_on "$ENV{BUILD_TELEMETRY}")
+  endif()
+  if(env_off)
     set(reason "disabled by environment (BUILD_TELEMETRY / DO_NOT_TRACK)")
+  elseif(NOT BUILD_TELEMETRY AND NOT env_on)
+    set(reason "disabled (BUILD_TELEMETRY=OFF; opt in with environment variable BUILD_TELEMETRY=ON)")
   elseif(CMAKE_VERSION VERSION_LESS 4.3)
     set(reason "CMake ${CMAKE_VERSION} has no build instrumentation (needs >= 4.3) - off")
   elseif(NOT CMAKE_GENERATOR MATCHES "Ninja|Makefiles|FASTBuild")
@@ -1442,7 +1451,12 @@ function(_bt_project_main)
     file(WRITE "${query_file}" "${q}")
   endif()
   if(NOT quiet)
-    message(STATUS "BuildTelemetry: enabled -> ${url} (detail=${detail}; disable with -DBUILD_TELEMETRY=OFF or env BUILD_TELEMETRY=OFF)")
+    if(env_on)
+      set(hint "enabled by environment BUILD_TELEMETRY=ON; set it to OFF or unset it to disable")
+    else()
+      set(hint "disable with -DBUILD_TELEMETRY=OFF or env BUILD_TELEMETRY=OFF")
+    endif()
+    message(STATUS "BuildTelemetry: enabled -> ${url} (detail=${detail}; ${hint})")
   endif()
 endfunction()
 
