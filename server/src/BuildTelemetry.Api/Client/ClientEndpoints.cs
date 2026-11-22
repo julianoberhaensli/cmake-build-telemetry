@@ -37,6 +37,7 @@ public static partial class ClientEndpoints
                     publicUrl = PublicUrl(ctx, o),
                     ingestRequiresKey = o.Ingest.RequiresKey,
                     clientVersion = ClientVersion(),
+                    serverVersion = AppVersion.Current,
                     authMode = o.Auth.Mode.ToString().ToLowerInvariant(),
                 });
             })

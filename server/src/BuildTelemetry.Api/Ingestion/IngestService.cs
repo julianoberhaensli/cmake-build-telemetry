@@ -9,7 +9,7 @@ namespace BuildTelemetry.Api.Ingestion;
 /// <summary>Stores normalized bundles: upserts project + machine, inserts build, bulk-copies steps.</summary>
 public sealed class IngestService(NpgsqlDataSource dataSource, ILogger<IngestService> logger)
 {
-    public static readonly Meter Meter = new("BuildTelemetry.Ingest", "1.0.0");
+    public static readonly Meter Meter = new("BuildTelemetry.Ingest", AppVersion.Current);
     private static readonly Counter<long> Bundles = Meter.CreateCounter<long>("buildtelemetry.ingest.bundles", description: "Bundles ingested");
     private static readonly Counter<long> Steps = Meter.CreateCounter<long>("buildtelemetry.ingest.steps", description: "Build steps ingested");
     private static readonly Counter<long> Duplicates = Meter.CreateCounter<long>("buildtelemetry.ingest.duplicates", description: "Duplicate bundles");

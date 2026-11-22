@@ -31,7 +31,7 @@ function readAll(): VizTokens {
     muted: read('--viz-muted'),
     grid: read('--viz-grid'),
     axis: read('--viz-axis'),
-    series: [read('--viz-s1'), read('--viz-s2'), read('--viz-s3'), read('--viz-s4'), read('--viz-s5')],
+    series: [1, 2, 3, 4, 5, 6, 7, 8].map((i) => read(`--viz-s${i}`)),
     s1Wash: read('--viz-s1-wash'),
     good: read('--viz-good'),
     warning: read('--viz-warning'),

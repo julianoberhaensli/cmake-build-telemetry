@@ -11,9 +11,12 @@ performance across many machines and down to a single build.
 * **Server** – ASP.NET Core API (.NET 9/10) with PostgreSQL storage, ingest API keys,
   optional OIDC single sign-on, OpenTelemetry, health probes and OpenAPI.
 * **Dashboard** – React + TypeScript + Mantine + ECharts, served by the same container.
-  It covers fleet KPIs and trends, a build list, a per-build timeline (Gantt) with command
-  lines, a machine and hardware-profile comparison with a normalized *speed index*,
-  translation-unit and target hotspots, and a build-to-build comparison.
+  It covers fleet KPIs and trends, a build list, a per-build timeline (Gantt) that stays fast
+  with 10 000+ steps (zoom, pan, overview, highlight by search or legend group), a sortable and
+  searchable step table (duration, CPU, peak memory, output size, CSV export), a machine and
+  hardware-profile comparison with a normalized *speed index*, translation-unit and target
+  hotspots, a build-to-build comparison, and an admin page (password or OIDC role) to delete
+  builds and machines and define legend groups such as "Qt moc" for custom commands.
 
 ```mermaid
 flowchart LR
@@ -40,7 +43,7 @@ two files, not the repository:
 mkdir build-telemetry && cd build-telemetry
 curl -fsSLO https://raw.githubusercontent.com/julianoberhaensli/cmake-build-telemetry/main/deploy/docker-compose.yml
 curl -fsSL -o .env https://raw.githubusercontent.com/julianoberhaensli/cmake-build-telemetry/main/deploy/.env.example
-# edit .env: set POSTGRES_PASSWORD and INGEST_API_KEY
+# edit .env: set POSTGRES_PASSWORD and INGEST_API_KEY (and ADMIN_PASSWORD for the admin page)
 docker compose up -d            # → http://localhost:8080
 # evaluate without real builds first:  DEMO_DATA=true docker compose up -d
 ```
@@ -129,6 +132,22 @@ bash tests/e2e/run.sh                            # against a running server (BT_
 > **.NET version.** The published image runs on .NET 10 LTS. Local development defaults to
 > .NET 9 (`dotnet build -p:BtTargetFramework=net10.0` switches), which reached end of support
 > on **2026-11-10**. CI tests both.
+
+## Versioning and releases
+
+Client, server, dashboard and container image share one version, kept in [`VERSION`](VERSION).
+The server reads it at build time; the client file, `dashboard/package.json` and the version
+examples in the deploy files and docs carry a copy that a script keeps in step:
+
+```bash
+cmake -P scripts/version.cmake set 1.3.0   # write the new version everywhere
+cmake -P scripts/version.cmake             # check (CI fails on any mismatch)
+git commit -am "Release 1.3.0" && git tag v1.3.0 && git push origin main v1.3.0
+```
+
+CI refuses a tag that does not match `VERSION` and publishes the image as `1.3.0`, `1.3` and
+`sha-<commit>`. The dashboard shows its version at the bottom of the navigation; the API reports
+it in `/api/v1/me`, `/api/v1/client/info` and the OpenAPI document.
 
 ## License
 

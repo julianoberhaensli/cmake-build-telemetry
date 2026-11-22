@@ -26,7 +26,29 @@ use `__`, e.g. `Telemetry__Ingest__ApiKeys__ci`.
 | `Telemetry__Auth__RequiredRole` | – | Optional role required to see the dashboard (claim type `Telemetry__Auth__RoleClaimType`, default `roles`). |
 | `Telemetry__DataProtectionKeysPath` | – | Shared directory for cookie encryption keys (multiple replicas with OIDC). |
 | `Telemetry__Demo__Seed` | `false` | Seed 30 days of synthetic fleet data into an empty database. |
+| `Telemetry__Admin__Password` | – | Enables the admin page (delete builds and machines, legend groups). At least 12 characters; shorter values are ignored. Compose: `ADMIN_PASSWORD` in `.env`. |
+| `Telemetry__Admin__Role` | – | With OIDC: users with this role (claim `Telemetry__Auth__RoleClaimType`) are admins without the password. |
+| `Telemetry__Admin__SessionLifetime` | `08:00:00` | Admin session lifetime (sliding). |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | – | Enables OpenTelemetry traces + metrics export. |
+
+## Administration
+
+Set `ADMIN_PASSWORD` (Compose) or `Telemetry__Admin__Password` and open **Admin** in the
+dashboard. Admins can:
+
+* delete single builds (build page), selected builds, or every build that the filter bar
+  matches (admin page), and machines with all their builds;
+* define **legend groups**: rules that give matching steps their own name and colour on every
+  build timeline, for example `Qt moc` for custom commands whose command line contains `moc`.
+  A rule matches the command line (its first 4 KB), the source/output file or the target name,
+  as case-insensitive text or as a regular expression (linear-time engine: lookarounds and
+  backreferences are not supported). Rules are checked from top to bottom; the first match wins.
+
+The password sign-in sets an HTTP-only, `SameSite=Strict` cookie. Every change also requires the
+`X-BuildTelemetry-Admin` header, which browsers send cross-origin only after a CORS preflight
+that this server never allows, so other sites cannot trigger deletions. Sign-in attempts are
+limited to 10 per minute and client IP, and failures are logged with the IP. Deletions are
+logged with the admin's name (OIDC) or IP.
 
 ## Endpoints
 
@@ -35,6 +57,9 @@ use `__`, e.g. `Telemetry__Ingest__ApiKeys__ci`.
 | `PUT/POST /api/v1/ingest` | ingest key | Upload one bundle (`Content-Encoding: gzip` optional). `202` created, `200` duplicate, `401`, `413`, `422`, `429`. |
 | `GET /api/v1/ingest/ping` | ingest key | Connectivity check (`cmake -P BuildTelemetry.cmake test`). |
 | `GET /api/v1/overview, /trend, /builds, /builds/{id}, /builds/{id}/steps, /builds/{id}/steps/{seq}, /builds/{id}/trace, /compare, /machines, /machines/{id}, /hardware, /hotspots/files, /hotspots/targets, /filters` | dashboard | Analytics. Common filters: `from, to, project, machine, branch, ci, kind, buildType, compiler, success, tag=key:value`. |
+| `GET /api/v1/step-categories` | dashboard | Legend groups (rules) for the timeline. Each step in `/builds/{id}/steps` carries the id of its first matching rule as `category`. |
+| `GET /api/v1/admin/session`, `POST /api/v1/admin/login`, `/logout` | dashboard | Admin session state and password sign-in. |
+| `GET /api/v1/admin/machines`; `DELETE /api/v1/admin/builds/{id}`, `/machines/{id}`; `POST /api/v1/admin/builds/delete` (`{"ids": [...]}`), `/builds/delete-matching` (build-list filter); `PUT /api/v1/admin/step-categories` | admin | Administration. Writes need the `X-BuildTelemetry-Admin` header. |
 | `GET /api/v1/client/BuildTelemetry.cmake`, `/api/v1/client/info` | public | Pre-configured client, onboarding facts. |
 | `GET /healthz/live`, `/healthz/ready` | public | Probes (ready = migrations applied and DB reachable). |
 | `GET /openapi/v1.json`, `/api/docs` | public | OpenAPI document and reference UI. |

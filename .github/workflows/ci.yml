@@ -11,6 +11,23 @@ permissions:
   contents: read
 
 jobs:
+  # One version for everything (VERSION file, see scripts/version.cmake). A release tag
+  # v<version> must match it, so image tags, server, dashboard and client always agree.
+  version:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - name: Every component is at the version in VERSION
+        run: cmake -P scripts/version.cmake
+      - name: Release tag matches VERSION
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          v="$(cat VERSION)"
+          if [ "${GITHUB_REF_NAME#v}" != "$v" ]; then
+            echo "::error title=version::tag $GITHUB_REF_NAME does not match VERSION ($v)"
+            exit 1
+          fi
+
   server:
     runs-on: ubuntu-24.04
     services:
@@ -121,7 +138,7 @@ jobs:
   #   main     -> :latest, :sha-<commit>
   #   v1.2.3   -> :1.2.3, :1.2, :sha-<commit>
   image:
-    needs: [server, dashboard, client-compat, e2e]
+    needs: [version, server, dashboard, client-compat, e2e]
     runs-on: ubuntu-24.04
     permissions:
       contents: read

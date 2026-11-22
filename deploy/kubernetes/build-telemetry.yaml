@@ -4,11 +4,12 @@
 #   kubectl -n build-telemetry create secret generic build-telemetry \
 #     --from-literal=postgres='Host=<pg-host>;Database=buildtelemetry;Username=<user>;Password=<pw>;SSL Mode=Require' \
 #     --from-literal=ingest-key='<random>' \
-#     --from-literal=oidc-client-secret='<secret-or-empty>'
+#     --from-literal=oidc-client-secret='<secret-or-empty>' \
+#     --from-literal=admin-password='<at-least-12-characters-or-empty>'
 #   kubectl -n build-telemetry apply -f build-telemetry.yaml
 #
 # Replace the host names and (optionally) the OIDC settings below. The image is the one CI
-# publishes (linux/amd64 + linux/arm64); pin a release tag such as :1.0.0 or a :sha-<commit>
+# publishes (linux/amd64 + linux/arm64); pin a release tag such as :1.2.0 or a :sha-<commit>
 # tag instead of :latest for reproducible rollouts.
 apiVersion: apps/v1
 kind: Deployment
@@ -45,6 +46,10 @@ spec:
             - { name: Telemetry__Auth__ClientId, value: "" }
             - name: Telemetry__Auth__ClientSecret
               valueFrom: { secretKeyRef: { name: build-telemetry, key: oidc-client-secret, optional: true } }
+            # admin page: password (secret key "admin-password") and/or an OIDC role
+            - name: Telemetry__Admin__Password
+              valueFrom: { secretKeyRef: { name: build-telemetry, key: admin-password, optional: true } }
+            - { name: Telemetry__Admin__Role, value: "" }
             # With Oidc and >1 replica, mount a shared (RWX) volume here or use sticky sessions:
             - { name: Telemetry__DataProtectionKeysPath, value: "/keys" }
             - { name: OTEL_EXPORTER_OTLP_ENDPOINT, value: "" }

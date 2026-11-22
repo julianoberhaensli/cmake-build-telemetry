@@ -175,8 +175,47 @@ export interface Step {
   result: number | null;
   maxRssKb: number | null;
   outputBytes: number | null;
+  userTimeUs: number | null;
+  systemTimeUs: number | null;
   hasCommand: boolean;
   lane: number;
+  /** Id of the first matching legend rule. */
+  category: number | null;
+  /** Program a custom / install / test step runs ("moc", "cmake -E copy"). */
+  tool: string | null;
+}
+
+/** Shared legend rule (admin-managed): matching steps get their own name and colour. */
+export interface StepCategory {
+  id: number;
+  position: number;
+  name: string;
+  /** Categorical palette slot 1-8. */
+  colorSlot: number;
+  role: string | null;
+  field: 'command' | 'file' | 'target';
+  pattern: string;
+  isRegex: boolean;
+  enabled: boolean;
+}
+
+export interface AdminSession {
+  isAdmin: boolean;
+  via: 'password' | 'role' | null;
+  passwordConfigured: boolean;
+  roleConfigured: boolean;
+}
+
+export interface AdminMachine {
+  id: number;
+  hostname: string | null;
+  cpuModel: string | null;
+  osPretty: string | null;
+  isCi: boolean;
+  firstSeen: string;
+  lastSeen: string;
+  builds: number;
+  lastBuildAt: string | null;
 }
 
 export interface StepDetail {
@@ -259,4 +298,6 @@ export interface Me {
   authenticated: boolean;
   name: string | null;
   authMode: string;
+  /** server release (the dashboard is built from the same VERSION) */
+  version?: string;
 }

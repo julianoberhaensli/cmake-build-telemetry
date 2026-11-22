@@ -1,5 +1,8 @@
-import { Badge, Group, SimpleGrid, Stack } from '@mantine/core';
-import { useParams } from 'react-router';
+import { Badge, Button, Group, Modal, SimpleGrid, Stack, Text } from '@mantine/core';
+import { IconTrash } from '@tabler/icons-react';
+import { useState } from 'react';
+import { useNavigate, useParams } from 'react-router';
+import { useDeleteMachine, useIsAdmin } from '../api/admin';
 import { useBuilds, useMachine, useTrend } from '../api/hooks';
 import { BuildsTable } from '../components/BuildsTable';
 import { DurationTrend } from '../components/charts';
@@ -29,6 +32,7 @@ export function MachineDetailPage() {
           </Group>
         }
         subtitle={`${m.cpuModel ?? 'unknown CPU'} · ${m.logicalCores ?? '?'} threads · ${fmtMb(m.memoryMb)} · ${m.osPretty ?? m.osName ?? ''}`}
+        actions={<DeleteMachineButton id={m.id} hostname={m.hostname} />}
       />
       <FilterBar />
       <Stack gap="md">
@@ -63,6 +67,40 @@ export function MachineDetailPage() {
         </SimpleGrid>
         <Panel title="Recent builds">{builds.data ? <BuildsTable items={builds.data.items} compact /> : <Loading />}</Panel>
       </Stack>
+    </>
+  );
+}
+
+function DeleteMachineButton({ id, hostname }: { id: number; hostname: string | null }) {
+  const isAdmin = useIsAdmin();
+  const del = useDeleteMachine();
+  const navigate = useNavigate();
+  const [open, setOpen] = useState(false);
+  if (!isAdmin) return null;
+  return (
+    <>
+      <Button size="xs" variant="default" color="red" leftSection={<IconTrash size={14} />} onClick={() => setOpen(true)}>
+        Delete machine
+      </Button>
+      <Modal opened={open} onClose={() => setOpen(false)} title={`Delete ${hostname ?? 'this machine'}?`} centered>
+        <Text size="sm">
+          The machine and <b>all of its builds</b> (in every time range) are removed permanently. This cannot be undone. If it uploads
+          again, it is added back as a new machine.
+        </Text>
+        {del.error && (
+          <Text size="sm" c="red" mt="xs">
+            {del.error.message}
+          </Text>
+        )}
+        <Group justify="flex-end" mt="md">
+          <Button variant="default" onClick={() => setOpen(false)}>
+            Cancel
+          </Button>
+          <Button color="red" loading={del.isPending} onClick={() => del.mutate(id, { onSuccess: () => navigate('/machines') })}>
+            Delete machine
+          </Button>
+        </Group>
+      </Modal>
     </>
   );
 }

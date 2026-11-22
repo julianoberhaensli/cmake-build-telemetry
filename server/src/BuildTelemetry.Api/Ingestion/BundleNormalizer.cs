@@ -114,6 +114,7 @@ public static class BundleNormalizer
                     outputBytes = sum;
                 }
 
+                output = RepairOutput(output, Str(s, "command"), buildDir);
                 var pm = Obj(s, "processMetrics");
                 var target = Clean(Str(s, "target"), MaxNameLength);
                 raw.Add(new RawStep(
@@ -288,6 +289,64 @@ public static class BundleNormalizer
         }
 
         return new NormalizedBundle(bundleId, string.IsNullOrWhiteSpace(projectName) ? "unknown" : projectName!, machineRecord, record, steps);
+    }
+
+    /// <summary>
+    /// CMake passes custom-command outputs to its instrumentation wrapper with broken quoting on
+    /// Windows (<c>--output ""dir with space\x""</c>), so the snippet keeps only the part before
+    /// the first space: "C:/Program" for "C:/Program Files/…". When the command line contains a
+    /// quoted path that continues the truncated one, that path is the real output (or at least
+    /// its directory). Relative outputs are matched with the build directory in front.
+    /// </summary>
+    internal static string? RepairOutput(string? output, string? command, string? buildDir)
+    {
+        if (string.IsNullOrEmpty(output) || string.IsNullOrEmpty(command) || output.Contains(' '))
+        {
+            return output;
+        }
+
+        var o = output.Replace('\\', '/');
+        string prefix;
+        if (o.StartsWith('/') || (o.Length > 2 && o[1] == ':' && o[2] == '/'))
+        {
+            prefix = o;
+        }
+        else if (!string.IsNullOrEmpty(buildDir) && !buildDir.StartsWith('$'))
+        {
+            prefix = buildDir.Replace('\\', '/').TrimEnd('/') + "/" + o;
+        }
+        else
+        {
+            return output; // a bare relative name could match any quoted text
+        }
+
+        // The program itself often lives in the same place ("C:/Program Files/CMake/bin/cmake.exe"
+        // -E copy x "C:/Program Files/App/x"), so skip a match at the start of the command and
+        // take the last one: outputs are usually the last arguments.
+        var cmd = command.Replace('\\', '/');
+        var truncated = false;
+        foreach (var quote in new[] { '"', '\'' })
+        {
+            var key = quote + prefix + " ";
+            var best = -1;
+            for (var i = cmd.IndexOf(key, StringComparison.OrdinalIgnoreCase); i >= 0; i = cmd.IndexOf(key, i + 1, StringComparison.OrdinalIgnoreCase))
+            {
+                truncated = true;
+                if (i > 0 && !cmd[..i].TrimEnd().EndsWith("&&", StringComparison.Ordinal))
+                {
+                    best = i;
+                }
+            }
+
+            var end = best < 0 ? -1 : cmd.IndexOf(quote, best + 1);
+            if (end > best + 1)
+            {
+                return cmd.Substring(best + 1, end - best - 1);
+            }
+        }
+
+        // The path had a space, but the full output is not in the command: say it is cut off.
+        return truncated ? output + "…" : output;
     }
 
     internal static string? Relativize(string? path, string? baseDir, string placeholder)

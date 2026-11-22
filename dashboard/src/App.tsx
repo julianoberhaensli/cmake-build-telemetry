@@ -11,10 +11,12 @@ import {
   IconMoon,
   IconPlugConnected,
   IconServer2,
+  IconShieldLock,
   IconSun,
 } from '@tabler/icons-react';
 import { Link, Route, Routes, useLocation } from 'react-router';
 import { useMe } from './api/hooks';
+import { AdminPage } from './pages/AdminPage';
 import { BuildDetailPage } from './pages/BuildDetailPage';
 import { BuildsPage } from './pages/BuildsPage';
 import { ComparePage } from './pages/ComparePage';
@@ -32,6 +34,7 @@ const NAV = [
   { to: '/hotspots', label: 'Hotspots', icon: IconFlame },
   { to: '/compare', label: 'Compare', icon: IconArrowsDiff },
   { to: '/setup', label: 'Connect builds', icon: IconPlugConnected },
+  { to: '/admin', label: 'Admin', icon: IconShieldLock },
 ];
 
 /** Keep the global filter (range, project, …) when moving between list pages. */
@@ -90,13 +93,14 @@ export function App() {
         </Group>
       </AppShell.Header>
       <AppShell.Navbar p="sm">
+        <AppShell.Section grow>
         {NAV.map((n) => {
           const active = n.exact ? location.pathname === n.to : location.pathname.startsWith(n.to);
           return (
             <NavLink
               key={n.to}
               component={Link}
-              to={n.to + (n.to === '/setup' || n.to === '/compare' ? '' : suffix)}
+              to={n.to + (n.to === '/setup' || n.to === '/compare' || n.to === '/admin' ? '' : suffix)}
               label={n.label}
               leftSection={<n.icon size={18} stroke={1.6} />}
               active={active}
@@ -105,6 +109,13 @@ export function App() {
             />
           );
         })}
+        </AppShell.Section>
+        <AppShell.Section>
+          <Text size="xs" c="dimmed" px="sm" title={me?.version && me.version !== __APP_VERSION__ ? `Server ${me.version}` : undefined}>
+            Build Telemetry {__APP_VERSION__}
+            {me?.version && me.version !== __APP_VERSION__ && ` · server ${me.version}`}
+          </Text>
+        </AppShell.Section>
       </AppShell.Navbar>
       <AppShell.Main maw={1600}>
         <Routes>
@@ -116,6 +127,7 @@ export function App() {
           <Route path="/hotspots" element={<HotspotsPage />} />
           <Route path="/compare" element={<ComparePage />} />
           <Route path="/setup" element={<SetupPage />} />
+          <Route path="/admin" element={<AdminPage />} />
           <Route path="*" element={<Empty>Page not found.</Empty>} />
         </Routes>
       </AppShell.Main>

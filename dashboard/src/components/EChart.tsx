@@ -1,7 +1,6 @@
-import { BarChart, CustomChart, LineChart, ScatterChart } from 'echarts/charts';
+import { BarChart, LineChart, ScatterChart } from 'echarts/charts';
 import {
   AxisPointerComponent,
-  DataZoomComponent,
   GridComponent,
   LegendComponent,
   MarkLineComponent,
@@ -15,11 +14,9 @@ echarts.use([
   BarChart,
   LineChart,
   ScatterChart,
-  CustomChart,
   GridComponent,
   TooltipComponent,
   LegendComponent,
-  DataZoomComponent,
   MarkLineComponent,
   AxisPointerComponent,
   CanvasRenderer,

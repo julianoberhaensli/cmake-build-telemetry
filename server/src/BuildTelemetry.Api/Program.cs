@@ -1,6 +1,8 @@
 using System.IO.Compression;
 using System.Security.Claims;
 using System.Threading.RateLimiting;
+using BuildTelemetry.Api;
+using BuildTelemetry.Api.Admin;
 using BuildTelemetry.Api.Analytics;
 using BuildTelemetry.Api.Client;
 using BuildTelemetry.Api.Data;
@@ -31,6 +33,7 @@ builder.Services.Configure<TelemetryOptions>(builder.Configuration.GetSection(Te
 builder.Services.AddTelemetryDatabase(builder.Configuration);
 builder.Services.AddSingleton<IngestService>();
 builder.Services.AddSingleton<AnalyticsService>();
+builder.Services.AddSingleton<AdminService>();
 builder.Services.AddHostedService<MaintenanceService>();
 builder.Services.AddHostedService<DemoDataSeeder>();
 
@@ -54,7 +57,12 @@ builder.Services.Configure<ForwardedHeadersOptions>(o =>
         o.KnownProxies.Clear();
     }
 });
-builder.Services.AddOpenApi();
+builder.Services.AddOpenApi(o => o.AddDocumentTransformer((doc, _, _) =>
+{
+    doc.Info.Title = "BuildTelemetry API";
+    doc.Info.Version = AppVersion.Current;
+    return Task.CompletedTask;
+}));
 if (!string.IsNullOrWhiteSpace(telemetry.DataProtectionKeysPath))
 {
     builder.Services.AddDataProtection()
@@ -80,6 +88,10 @@ builder.Services.AddRateLimiter(o =>
             QueueLimit = 0,
         });
     });
+    // admin password guessing: 10 attempts per minute and client IP
+    o.AddPolicy(AdminEndpoints.LoginRateLimit, ctx => RateLimitPartition.GetFixedWindowLimiter(
+        ctx.Connection.RemoteIpAddress?.ToString() ?? "?",
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = 10, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
 });
 
 // --- authentication / authorization ---------------------------------------------------
@@ -89,7 +101,19 @@ var auth = builder.Services.AddAuthentication(o =>
             ? CookieAuthenticationDefaults.AuthenticationScheme
             : IngestKeyAuthenticationHandler.SchemeName;
     })
-    .AddScheme<AuthenticationSchemeOptions, IngestKeyAuthenticationHandler>(IngestKeyAuthenticationHandler.SchemeName, null);
+    .AddScheme<AuthenticationSchemeOptions, IngestKeyAuthenticationHandler>(IngestKeyAuthenticationHandler.SchemeName, null)
+    // admin password session (both auth modes); SameSite=Strict, plus the CSRF header on writes
+    .AddCookie(AdminEndpoints.Scheme, o =>
+    {
+        o.Cookie.Name = "bt.admin";
+        o.Cookie.HttpOnly = true;
+        o.Cookie.SameSite = SameSiteMode.Strict;
+        o.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+        o.SlidingExpiration = true;
+        o.ExpireTimeSpan = telemetry.Admin.SessionLifetime;
+        o.Events.OnRedirectToLogin = ctx => ApiAware(ctx, StatusCodes.Status401Unauthorized);
+        o.Events.OnRedirectToAccessDenied = ctx => ApiAware(ctx, StatusCodes.Status403Forbidden);
+    });
 
 if (telemetry.Auth.Mode == DashboardAuthMode.Oidc)
 {
@@ -146,13 +170,23 @@ builder.Services.AddAuthorization(o =>
             p.RequireAssertion(_ => true);
         }
     });
+    o.AddPolicy(AdminEndpoints.Policy, p =>
+    {
+        p.AddAuthenticationSchemes(AdminEndpoints.Scheme);
+        if (telemetry.Auth.Mode == DashboardAuthMode.Oidc)
+        {
+            p.AddAuthenticationSchemes(CookieAuthenticationDefaults.AuthenticationScheme);
+        }
+
+        p.RequireAssertion(ctx => AdminEndpoints.IsAdmin(ctx.User, telemetry));
+    });
 });
 
 // --- OpenTelemetry (enabled when an OTLP endpoint is configured) -----------------------
 if (!string.IsNullOrWhiteSpace(builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"]))
 {
     builder.Services.AddOpenTelemetry()
-        .ConfigureResource(r => r.AddService("build-telemetry", serviceVersion: typeof(Program).Assembly.GetName().Version?.ToString()))
+        .ConfigureResource(r => r.AddService("build-telemetry", serviceVersion: AppVersion.Current))
         .WithTracing(t => t.AddAspNetCoreInstrumentation().AddNpgsql().AddOtlpExporter())
         .WithMetrics(m => m
             .AddAspNetCoreInstrumentation()
@@ -168,6 +202,17 @@ if (!telemetry.Ingest.EffectiveKeys.Any())
     app.Logger.LogWarning(telemetry.Ingest.AllowAnonymous
         ? "No ingest API keys configured: ingestion is OPEN to anonymous clients (set Telemetry__Ingest__ApiKeys__<name>=<secret>)"
         : "No ingest API keys configured and anonymous ingestion disabled: all uploads will be rejected");
+}
+
+if (!telemetry.Admin.PasswordEnabled && string.IsNullOrWhiteSpace(telemetry.Admin.Role))
+{
+    app.Logger.LogInformation(
+        "Administration is disabled: set Telemetry__Admin__Password (at least {Min} characters) to delete builds and machines and edit legend rules",
+        AdminOptions.AdminMinPasswordLength);
+}
+else if (!string.IsNullOrEmpty(telemetry.Admin.Password) && !telemetry.Admin.PasswordEnabled)
+{
+    app.Logger.LogWarning("Telemetry__Admin__Password is shorter than {Min} characters and is ignored", AdminOptions.AdminMinPasswordLength);
 }
 
 app.UseForwardedHeaders();
@@ -198,12 +243,14 @@ app.MapScalarApiReference("/api/docs", o => o.WithTitle("BuildTelemetry API")).A
 app.MapIngestEndpoints();
 app.MapAnalyticsEndpoints();
 app.MapClientEndpoints();
+app.MapAdminEndpoints();
 
 app.MapGet("/api/v1/me", (HttpContext ctx) => new
     {
         authenticated = ctx.User.Identity?.IsAuthenticated == true && ctx.User.Identity.AuthenticationType != IngestKeyAuthenticationHandler.SchemeName,
         name = ctx.User.Identity?.Name ?? ctx.User.FindFirst("email")?.Value,
         authMode = telemetry.Auth.Mode.ToString().ToLowerInvariant(),
+        version = AppVersion.Current,
     })
     .WithTags("Session")
     .AllowAnonymous();

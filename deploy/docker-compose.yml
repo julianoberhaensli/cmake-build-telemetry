@@ -31,7 +31,7 @@ services:
     # not published: only the app talks to the database
 
   app:
-    # pin a release in production, e.g. ...cmake-build-telemetry:1.0.0 (set BT_IMAGE in .env)
+    # pin a release in production, e.g. ...cmake-build-telemetry:1.2.0 (set BT_IMAGE in .env)
     image: ${BT_IMAGE:-ghcr.io/julianoberhaensli/cmake-build-telemetry:latest}
     restart: unless-stopped
     depends_on:
@@ -56,6 +56,9 @@ services:
       Telemetry__Auth__ClientId: ${OIDC_CLIENT_ID:-}
       Telemetry__Auth__ClientSecret: ${OIDC_CLIENT_SECRET:-}
       Telemetry__Auth__RequiredRole: ${OIDC_REQUIRED_ROLE:-}
+      # administration (delete builds/machines, legend groups); empty = disabled
+      Telemetry__Admin__Password: ${ADMIN_PASSWORD:-}
+      Telemetry__Admin__Role: ${OIDC_ADMIN_ROLE:-}
       Telemetry__DataProtectionKeysPath: /keys
       # optional OpenTelemetry export (traces + metrics)
       OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}

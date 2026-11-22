@@ -292,7 +292,7 @@ public sealed class DemoDataSeeder(
             CiJob = m.Ci ? $"{project.Name}/build-{(m.Os == "Windows" ? "windows" : "linux")}" : null,
             UserHash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes("user:" + user)))[..16].ToLowerInvariant(),
             Detail = "full",
-            ClientVersion = "1.0.0",
+            ClientVersion = AppVersion.Current,
             DataVersion = day < days / 2 ? "1.1" : "1.2",
             SourceDir = root,
             BuildDir = root + "/build",

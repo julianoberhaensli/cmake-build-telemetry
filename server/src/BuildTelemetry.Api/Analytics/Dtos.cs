@@ -164,8 +164,16 @@ public sealed class StepDto
     public int? Result { get; init; }
     public long? MaxRssKb { get; init; }
     public long? OutputBytes { get; init; }
+    public long? UserTimeUs { get; init; }
+    public long? SystemTimeUs { get; init; }
     public bool HasCommand { get; init; }
     public int Lane { get; set; }
+
+    /// <summary>Id of the first matching legend rule (step_categories), if any.</summary>
+    public long? Category { get; set; }
+
+    /// <summary>Program a custom/install/test step runs ("moc", "cmake -E copy"), from its command line.</summary>
+    public string? Tool { get; set; }
 }
 
 public sealed class StepDetailDto

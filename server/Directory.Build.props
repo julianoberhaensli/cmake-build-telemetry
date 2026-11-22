@@ -17,6 +17,11 @@
     <Deterministic>true</Deterministic>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
     <NuGetAudit>true</NuGetAudit>
+    <!-- one version for client, server, dashboard and image: the repository's VERSION file -->
+    <BtVersionFile>$(MSBuildThisFileDirectory)../VERSION</BtVersionFile>
+    <Version Condition="Exists('$(BtVersionFile)')">$([System.IO.File]::ReadAllText('$(BtVersionFile)').Trim())</Version>
+    <Version Condition="!Exists('$(BtVersionFile)')">0.0.0-dev</Version>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(TargetFramework)' == 'net9.0'">

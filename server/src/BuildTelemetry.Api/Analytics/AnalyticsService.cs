@@ -1,3 +1,4 @@
+using BuildTelemetry.Api.Admin;
 using Dapper;
 using Npgsql;
 
@@ -202,11 +203,49 @@ public sealed class AnalyticsService(NpgsqlDataSource dataSource)
         var steps = (await conn.QueryAsync<StepDto>(new CommandDefinition(
             """
             select seq, role, target, target_type, source, output, language, start_offset_ms as start_ms, duration_ms,
-                   result, max_rss_kb, output_bytes, command is not null as has_command
+                   result, max_rss_kb, output_bytes, user_time_us, system_time_us, command is not null as has_command
             from build_steps where build_id = @id order by start_offset_ms, seq
             """, new { id }, cancellationToken: ct))).AsList();
         AssignLanes(steps);
+        await ClassifyAsync(conn, id, steps, ct);
         return steps;
+    }
+
+    /// <summary>
+    /// Tool names for non-compile/link steps and the legend category of every step. Command
+    /// lines are read only for the roles that need them, and only their first 4 KB.
+    /// </summary>
+    private static async Task ClassifyAsync(NpgsqlConnection conn, Guid id, List<StepDto> steps, CancellationToken ct)
+    {
+        var rules = (await conn.QueryAsync<StepCategoryDto>(new CommandDefinition(
+            "select id, position, name, color_slot, role, field, pattern, is_regex, enabled from step_categories where enabled",
+            cancellationToken: ct))).AsList();
+        var matcher = new StepCategories.Matcher(rules);
+        var commandRoles = matcher.CommandRoles;
+        var allRoles = commandRoles.Contains(null);
+        var roles = commandRoles.Where(r => r is not null).Cast<string>()
+            .Concat(["custom", "install", "test"]).Distinct().ToArray();
+
+        var commands = (await conn.QueryAsync<(int Seq, string Command)>(new CommandDefinition(
+            $"""
+             select seq, left(command, {StepCategories.CommandPrefix}) from build_steps
+             where build_id = @id and command is not null {(allRoles ? "" : "and role = any(@roles)")}
+             """, new { id, roles }, cancellationToken: ct, commandTimeout: 120)))
+            .ToDictionary(x => x.Seq, x => x.Command);
+
+        foreach (var s in steps)
+        {
+            commands.TryGetValue(s.Seq, out var command);
+            if (s.Role is not ("compile" or "link"))
+            {
+                s.Tool = StepCategories.ToolName(command);
+            }
+
+            if (!matcher.IsEmpty)
+            {
+                s.Category = matcher.Match(s.Role, command, s.Source, s.Output, s.Target);
+            }
+        }
     }
 
     public async Task<StepDetailDto?> StepAsync(Guid id, int seq, CancellationToken ct)
@@ -491,7 +530,7 @@ public sealed class AnalyticsService(NpgsqlDataSource dataSource)
         const string sql =
             """
             select p.name, count(b.id) as count from projects p left join builds b on b.project_id = p.id
-            group by p.name order by count desc, p.name;
+            group by p.name having count(b.id) > 0 order by count desc, p.name;
 
             select branch from builds where branch is not null and started_at > now() - interval '90 days'
             group by branch order by max(started_at) desc limit 200;

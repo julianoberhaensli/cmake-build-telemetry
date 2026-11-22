@@ -161,10 +161,24 @@ Practical consequences:
 
 React 19 + TypeScript, Mantine 8 components, TanStack Query (caching, previous data kept
 during refetch), React Router (all filters live in the URL, so every view is a shareable
-link), and ECharts with canvas rendering (the timeline draws thousands of bars). The chart
-palette is a validated categorical set, checked for CVD separation and contrast in light and
-dark mode. Colours follow the role (compile/link/custom/configure), never the rank. Failures
-use the reserved status red together with a text label. Every trend chart has a table view.
+link), and ECharts with canvas rendering for the charts. The chart palette is a validated
+categorical set, checked for CVD separation and contrast in light and dark mode. Colours
+follow the role (compile/link/custom/configure) or an admin-defined legend group, never the
+rank. Failures use the reserved status red together with a text label. Every trend chart has
+a table view.
+
+The **build timeline** is a plain 2D canvas, not a chart library: each job lane's steps are
+sorted and never overlap, so a binary search finds the first visible bar and only the bars in
+the window are drawn (about 5 ms for 9 500 bars fully zoomed out, much less zoomed in). The
+overview strip above it shows how many job slots are busy over the whole build; drag in it to
+choose the window. The axis uses clock offsets from the build start (`12:30`, `1:02:00`) with
+1-2-5 / 15-30 s / 1-2-5-10-15-30 min steps. One filter (search, role, legend group, target,
+failed) drives both the highlighted bars and the step table below.
+
+Custom-command outputs: CMake passes them to its wrapper with broken quoting on Windows, so a
+snippet keeps only the text before the first space ("C:/Program" for "C:/Program Files/…").
+The server takes the full path from the quoted argument in the command line that continues
+it (skipping the program itself) and marks it with "…" when the command does not contain it.
 
 ## 6. Scaling path
 

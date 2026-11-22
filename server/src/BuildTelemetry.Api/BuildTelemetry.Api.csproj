@@ -3,7 +3,6 @@
   <PropertyGroup>
     <RootNamespace>BuildTelemetry.Api</RootNamespace>
     <AssemblyName>BuildTelemetry.Api</AssemblyName>
-    <Version>1.0.0</Version>
     <!-- container-friendly defaults -->
     <ServerGarbageCollection>true</ServerGarbageCollection>
     <ConcurrentGarbageCollection>true</ConcurrentGarbageCollection>

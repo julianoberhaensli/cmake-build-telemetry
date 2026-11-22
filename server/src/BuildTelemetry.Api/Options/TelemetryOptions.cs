@@ -13,6 +13,7 @@ public sealed class TelemetryOptions
 
     public IngestOptions Ingest { get; set; } = new();
     public AuthOptions Auth { get; set; } = new();
+    public AdminOptions Admin { get; set; } = new();
     public RetentionOptions Retention { get; set; } = new();
     public DemoOptions Demo { get; set; } = new();
 }
@@ -64,6 +65,27 @@ public sealed class AuthOptions
     /// <summary>Optional role/group claim value required to see the dashboard.</summary>
     public string? RequiredRole { get; set; }
     public string RoleClaimType { get; set; } = "roles";
+}
+
+/// <summary>
+/// Administration (deleting builds and machines, legend rules). Admins sign in with
+/// <see cref="Password"/>, or, with OIDC, by having <see cref="Role"/> in the role claim.
+/// Without either, administration is disabled.
+/// </summary>
+public sealed class AdminOptions
+{
+    /// <summary>Admin password for the dashboard's admin sign-in (at least 12 characters).</summary>
+    public string? Password { get; set; }
+
+    /// <summary>OIDC mode: role/group claim value that makes a signed-in user an admin.</summary>
+    public string? Role { get; set; }
+
+    /// <summary>Admin session lifetime (sliding).</summary>
+    public TimeSpan SessionLifetime { get; set; } = TimeSpan.FromHours(8);
+
+    public bool PasswordEnabled => Password is { Length: >= AdminMinPasswordLength };
+
+    public const int AdminMinPasswordLength = 12;
 }
 
 public sealed class RetentionOptions

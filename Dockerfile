@@ -30,6 +30,8 @@ RUN npm run build
 FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:${DOTNET_VERSION} AS server
 ARG DOTNET_VERSION
 WORKDIR /src
+# VERSION is the single version of client, server and dashboard (see scripts/version.cmake)
+COPY VERSION ./
 COPY server/Directory.Build.props server/Directory.Packages.props server/
 COPY server/src/BuildTelemetry.Api/BuildTelemetry.Api.csproj server/src/BuildTelemetry.Api/
 RUN dotnet restore server/src/BuildTelemetry.Api/BuildTelemetry.Api.csproj -p:BtTargetFramework=net${DOTNET_VERSION}
