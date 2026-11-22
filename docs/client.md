@@ -89,7 +89,7 @@ override or disable without reconfiguring.
 | `BUILD_TELEMETRY_USER_ID` | `hash` | `hash` (16 hex chars of a SHA-256), `plain` or `none`. |
 | `BUILD_TELEMETRY_TAGS` | – | `key=value` pairs separated by commas, stored as JSON for grouping/filtering (`?tag=team:engine`). |
 | `BUILD_TELEMETRY_UPLOAD` | `auto` | `auto`: inline for `ninja` (already in CMake's background daemon) and on CI; detached worker for interactive `cmake --build`. `sync`: always inline. `async`: always detached. |
-| `BUILD_TELEMETRY_TIMEOUT` | `10` | Total upload timeout per request in seconds (inactivity timeout is 5 s). |
+| `BUILD_TELEMETRY_TIMEOUT` | `10` | Total upload timeout per request in seconds (inactivity timeout is 5 s). The server answers only after it has stored the build, so both timeouts grow by about 20 s per MB of compressed bundle. |
 | `BUILD_TELEMETRY_TLS_VERIFY` | `ON` | Set `OFF` only for testing. |
 | `BUILD_TELEMETRY_CA_FILE` | – | CA bundle for private PKI. |
 | `BUILD_TELEMETRY_MAX_SPOOL` | `50` | Maximum queued bundles per build tree; older ones are dropped. Bundles older than 14 days are always dropped. |
@@ -117,6 +117,6 @@ Standard `http_proxy`/`https_proxy`/`no_proxy` variables are honoured (libcurl).
 | CMake 3.24 – 4.2, VS/Xcode generator, no URL | One status line; query file removed; build unaffected. |
 | Server down / DNS failure / TLS error | Bundle queued. Next attempt after 1, 2, 4 … 64 min. The `cmake --build` path never waits for the network. |
 | Invalid key (401/403), 429, 5xx | Kept and retried with back-off. |
-| Bundle rejected (400/413/415/422) | Dropped and logged in `telemetry.log`. |
+| Bundle rejected (400/413/415/422) | Dropped and logged in `telemetry.log`. 413 means the bundle exceeds the server's `Telemetry__Ingest__MaxBundleBytes` or the body limit of a reverse proxy in front of it (see [server docs](server.md#deployment)). |
 | Two instrumentation queries (project + machine) | Each index is handled once (claim file plus server-side idempotency). |
 | Disk | Spool capped by count (50) and age (14 days); staging uses hard links (no copies). |

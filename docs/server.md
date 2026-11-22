@@ -72,6 +72,12 @@ API is stateless, so scale replicas freely. With OIDC and several replicas, shar
 **TLS** terminates at the ingress or reverse proxy. Set `Telemetry__PublicUrl` to the external
 https URL.
 
+**Request size behind a proxy.** Bundles are gzip-compressed on the wire: a build of 10 000
+steps with command lines is about 2–3 MB compressed and 40–50 MB decompressed. The server limit
+(`MaxBundleBytes`, 128 MiB) applies to the decompressed body. A reverse proxy limits the
+compressed one. Set it to at least 64 MB: nginx `client_max_body_size 64m;` (default 1 MB).
+The Kubernetes Ingress in this repository already sets `proxy-body-size: 64m`.
+
 ## Operations
 
 * Database migrations run automatically at start (advisory-locked, safe with many replicas).

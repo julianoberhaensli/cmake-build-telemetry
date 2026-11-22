@@ -208,6 +208,29 @@ public class ApiIntegrationTests(ApiFixture fx) : IClassFixture<ApiFixture>
     }
 
     [Fact]
+    public async Task MaxBundleBytes_limits_the_decompressed_body_with_413()
+    {
+        if (fx.Factory is null)
+        {
+            return;
+        }
+
+        // 296 KB of JSON, 14 KB on the wire: only the decompressed size is over the limit.
+        // The decompression middleware used to apply the server default here (Kestrel: 30 MB),
+        // so real bundles above that failed with 500 even below MaxBundleBytes.
+        await using var limited = fx.Factory.WithWebHostBuilder(b => b.UseSetting("Telemetry:Ingest:MaxBundleBytes", "100000"));
+        var client = limited.CreateClient();
+        var json = FixtureText("bundle-full-postBuild.json");
+        var tooLarge = await client.SendAsync(Upload(json, "secret-ci-key"));
+        Assert.Equal(HttpStatusCode.RequestEntityTooLarge, tooLarge.StatusCode);
+
+        // the same bundle within the limit: accepted (202, or 200 if another test stored it first)
+        await using var roomy = fx.Factory.WithWebHostBuilder(b => b.UseSetting("Telemetry:Ingest:MaxBundleBytes", "400000"));
+        var ok = await roomy.CreateClient().SendAsync(Upload(json, "secret-ci-key"));
+        Assert.True(ok.IsSuccessStatusCode, ok.StatusCode.ToString());
+    }
+
+    [Fact]
     public async Task Client_download_is_preconfigured_with_server_url()
     {
         if (fx.Factory is null)

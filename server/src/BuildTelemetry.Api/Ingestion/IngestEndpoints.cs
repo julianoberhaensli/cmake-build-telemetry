@@ -2,6 +2,7 @@ using System.Text.Json;
 using BuildTelemetry.Api.Options;
 using BuildTelemetry.Api.Security;
 using Microsoft.AspNetCore.Http.Features;
+using Microsoft.AspNetCore.Http.Metadata;
 using Microsoft.Extensions.Options;
 
 namespace BuildTelemetry.Api.Ingestion;
@@ -20,6 +21,7 @@ public static class IngestEndpoints
 
         // CMake's file(UPLOAD) issues PUT; POST is accepted for other clients.
         group.MapMethods("", [HttpMethods.Put, HttpMethods.Post], IngestAsync)
+            .WithMetadata(new BundleSizeLimit(app.ServiceProvider.GetRequiredService<IOptionsMonitor<TelemetryOptions>>()))
             .WithName("IngestBundle")
             .WithSummary("Ingest one build-telemetry bundle (JSON, optionally Content-Encoding: gzip)")
             .Accepts<JsonElement>("application/json")
@@ -49,6 +51,8 @@ public static class IngestEndpoints
         CancellationToken ct)
     {
         var ingest = options.Value.Ingest;
+        // Limit on the bytes on the wire (Kestrel). The decompressed body is limited by
+        // BundleSizeLimit, which the decompression middleware reads before this handler runs.
         if (ctx.Features.Get<IHttpMaxRequestBodySizeFeature>() is { IsReadOnly: false } size)
         {
             size.MaxRequestBodySize = ingest.MaxBundleBytes;
@@ -66,6 +70,18 @@ public static class IngestEndpoints
         catch (InvalidDataException ex)
         {
             return Results.Problem(statusCode: StatusCodes.Status400BadRequest, title: "Invalid content encoding", detail: ex.Message);
+        }
+        catch (Exception ex) when (IsTooLarge(ex))
+        {
+            loggers.CreateLogger("Ingest").LogWarning(
+                "Bundle rejected: the decompressed body is larger than Telemetry:Ingest:MaxBundleBytes ({MaxBundleBytes} bytes)",
+                ingest.MaxBundleBytes);
+            return Results.Problem(statusCode: StatusCodes.Status413PayloadTooLarge, title: "Bundle too large",
+                detail: $"The decompressed bundle exceeds {ingest.MaxBundleBytes} bytes (Telemetry:Ingest:MaxBundleBytes).");
+        }
+        catch (BadHttpRequestException ex)
+        {
+            return Results.Problem(statusCode: ex.StatusCode, title: "Bad request", detail: ex.Message);
         }
 
         using (doc)
@@ -95,5 +111,24 @@ public static class IngestEndpoints
         }
     }
 
+    // Kestrel (413 on the wire) or the decompression middleware: .NET 9 throws a plain
+    // InvalidOperationException from its size-limited stream, later versions a 413.
+    private static bool IsTooLarge(Exception ex) => ex switch
+    {
+        BadHttpRequestException b => b.StatusCode == StatusCodes.Status413PayloadTooLarge,
+        InvalidOperationException => ex.Message.Contains("maximum number of bytes", StringComparison.OrdinalIgnoreCase),
+        _ => false,
+    };
+
     public sealed record IngestResponse(Guid Id, bool Duplicate, int Steps);
+
+    /// <summary>
+    /// The request decompression middleware fixes its limit for the decompressed body before
+    /// the endpoint runs: this metadata if present, otherwise the server default (Kestrel:
+    /// 30 MB). Without it, bundles of about 6 000+ steps with command lines failed with 500.
+    /// </summary>
+    private sealed class BundleSizeLimit(IOptionsMonitor<TelemetryOptions> options) : IRequestSizeLimitMetadata
+    {
+        public long? MaxRequestBodySize => options.CurrentValue.Ingest.MaxBundleBytes;
+    }
 }
