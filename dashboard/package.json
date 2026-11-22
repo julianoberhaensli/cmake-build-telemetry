@@ -4,6 +4,7 @@
   "version": "1.0.0",
   "type": "module",
   "description": "Dashboard for CMake build telemetry (React + Mantine + ECharts)",
+  "license": "MIT",
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",

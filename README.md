@@ -118,3 +118,9 @@ bash tests/e2e/run.sh                            # against a running server (BT_
 > **.NET version.** The published image runs on .NET 10 LTS. Local development defaults to
 > .NET 9 (`dotnet build -p:BtTargetFramework=net10.0` switches), which reached end of support
 > on **2026-11-10**. CI tests both.
+
+## License
+
+[MIT](LICENSE): client, server, dashboard, deployment files and docs. The client file carries the
+same notice in its header, so copies of it in other repositories stay covered. Dependencies keep
+their own licenses (MIT, Apache-2.0, PostgreSQL License).

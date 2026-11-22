@@ -1,5 +1,9 @@
 # =============================================================================
 #  BuildTelemetry.cmake - plug-and-play build telemetry for CMake builds
+#
+#  SPDX-License-Identifier: MIT
+#  Copyright (c) 2026 Julian Oberhänsli
+#  https://github.com/julianoberhaensli/cmake-build-telemetry (full license text: LICENSE)
 # =============================================================================
 #
 #  Collects timing data for every configure / compile / link / custom step
