@@ -2,8 +2,8 @@ import { ActionIcon, Group, SegmentedControl, Text, Tooltip } from '@mantine/cor
 import { IconArrowsHorizontal, IconZoomIn, IconZoomOut } from '@tabler/icons-react';
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import type { Step, StepCategory } from '../api/types';
-import { esc, fmtDuration, fmtKb } from '../lib/format';
-import { cpuMs, fmtClock, fmtSpan, stepColor, stepLabel, stepPath, tickStep } from '../lib/steps';
+import { esc, fmtDuration, fmtKb, tickStep } from '../lib/format';
+import { cpuMs, fmtClock, fmtSpan, stepColor, stepLabel, stepPath } from '../lib/steps';
 import { useViz } from './viz';
 
 export interface TimelineHandle {

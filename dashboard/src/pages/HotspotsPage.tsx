@@ -7,7 +7,6 @@ import { NoteText, RankedBars } from '../components/charts';
 import { FilterBar } from '../components/FilterBar';
 import { Empty, ErrorNote, Loading, PageHeader, Panel } from '../components/Ui';
 import { fileName, fmtDuration, fmtKb, fmtNumber } from '../lib/format';
-import { fmtSeconds } from '../lib/format';
 import { useFilters } from '../state/filters';
 
 const FILE_SORTS = [
@@ -100,7 +99,7 @@ function FilesView() {
       ) : (
         <>
           <Panel title={`Top translation units by ${FILE_SORTS.find((s) => s.value === sort)?.label.toLowerCase()}`}>
-            <RankedBars labels={top.map((f) => f.source)} values={top.map((f) => metric(sort, f))} format={format} axisFormat={sort === 'compiles' || sort === 'maxRssKb' ? undefined : fmtSeconds} ariaLabel="Top translation units" />
+            <RankedBars labels={top.map((f) => f.source)} values={top.map((f) => metric(sort, f))} format={format} durationAxis={sort !== 'compiles' && sort !== 'maxRssKb'} ariaLabel="Top translation units" />
             <NoteText>“Total time” = average × number of compiles: the files whose speed-up saves the most fleet time.</NoteText>
           </Panel>
           <Panel>
@@ -161,7 +160,7 @@ function TargetsView() {
   return (
     <Stack gap="md">
       <Panel title="Targets by accumulated time" subtitle="Compile + link + custom commands, summed over all builds in range">
-        <RankedBars labels={top.map((t) => t.target)} values={top.map((t) => t.totalMs)} format={fmtDuration} axisFormat={fmtSeconds} ariaLabel="Targets by accumulated time" />
+        <RankedBars labels={top.map((t) => t.target)} values={top.map((t) => t.totalMs)} format={fmtDuration} durationAxis ariaLabel="Targets by accumulated time" />
       </Panel>
       <Panel>
         <Table.ScrollContainer minWidth={800}>

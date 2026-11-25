@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { fmtAxisDuration, tickStep } from '../lib/format';
 
 /** Chart tokens resolved from CSS custom properties for the active color scheme. */
 export interface VizTokens {
@@ -119,6 +120,33 @@ export function valueAxis(v: VizTokens, formatter: (n: number) => string, extra:
     axisLabel: { color: v.muted, fontSize: 11, formatter },
     ...extra,
   };
+}
+
+/**
+ * Value axis for durations in ms. ECharts' own "nice" steps are decimal (500 s, 1000 s …),
+ * which reads badly once builds take most of an hour, so the interval comes from time units
+ * instead (… 30 s, 1 / 2 / 5 / 10 / 15 / 30 min, 1 / 2 / 4 h …) and ticks read "45m", "1h 15m".
+ * `headroom` adds a step when the largest value would sit on the top gridline, leaving room
+ * for the point and the labels drawn next to it.
+ */
+export function durationAxis(
+  v: VizTokens,
+  values: Iterable<number | null | undefined>,
+  opts: { ticks?: number; headroom?: boolean; signed?: boolean; extra?: object } = {},
+) {
+  let lo = 0;
+  let hi = 0;
+  for (const x of values) {
+    if (x == null || !Number.isFinite(x)) continue;
+    lo = Math.min(lo, x);
+    hi = Math.max(hi, x);
+  }
+  const step = tickStep(Math.max(hi - lo, 1000), opts.ticks ?? 5);
+  const min = Math.floor(lo / step) * step;
+  let max = Math.max(step, Math.ceil(hi / step) * step);
+  if (opts.headroom && hi > 0 && max - hi < step * 0.25) max += step;
+  const fmt = (n: number) => (opts.signed && n > 0 ? '+' : '') + fmtAxisDuration(n, step);
+  return valueAxis(v, fmt, { min, max, interval: step, ...opts.extra });
 }
 
 export function categoryAxis(v: VizTokens, extra: object = {}) {

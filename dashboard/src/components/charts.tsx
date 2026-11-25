@@ -2,9 +2,9 @@ import { Group, SegmentedControl, Table, Text } from '@mantine/core';
 import dayjs from 'dayjs';
 import { useMemo, useState } from 'react';
 import type { TrendPoint } from '../api/types';
-import { esc, fmtDuration, fmtSeconds } from '../lib/format';
+import { esc, fmtDuration } from '../lib/format';
 import { EChart, type ChartClick } from './EChart';
-import { baseChart, categoryAxis, tipRow, useViz, valueAxis } from './viz';
+import { baseChart, categoryAxis, durationAxis, tipRow, useViz, valueAxis } from './viz';
 
 function bucketLabel(iso: string, spanDays: number) {
   return spanDays <= 2 ? dayjs(iso).format('HH:mm') : dayjs(iso).format('MMM D');
@@ -39,13 +39,17 @@ export function DurationTrend({ data, height = 280 }: { data: TrendPoint[]; heig
         formatter: (ps: { dataIndex: number }[]) => {
           const p = data[ps[0].dataIndex];
           return (
-            `<div style="margin-bottom:4px;opacity:.75">${esc(dayjs(p.bucket).format('ddd, MMM D YYYY HH:mm'))} · ${p.builds} builds</div>` +
+            `<div style="margin-bottom:4px;opacity:.75">${esc(dayjs(p.bucket).format('ddd, MMM D YYYY HH:mm'))} · ${p.builds} build${p.builds === 1 ? '' : 's'}</div>` +
             series.map((s) => tipRow(s.color, s.name, fmtDuration(p[s.key]), 'line')).join('')
           );
         },
       },
       xAxis: categoryAxis(v, { data: data.map((d) => bucketLabel(d.bucket, spanDays)), boundaryGap: false }),
-      yAxis: valueAxis(v, (n: number) => fmtSeconds(n)),
+      yAxis: durationAxis(
+        v,
+        data.flatMap((d) => [d.p50WallMs, d.p90WallMs]),
+        { headroom: true },
+      ),
       series: series.map((s) => ({
         name: s.name,
         type: 'line',
@@ -57,6 +61,8 @@ export function DurationTrend({ data, height = 280 }: { data: TrendPoint[]; heig
         itemStyle: { color: s.color, borderColor: v.surface, borderWidth: 2 },
         lineStyle: { width: 2, color: s.color, cap: 'round', join: 'round' },
         emphasis: { focus: 'series' },
+        // p50 and p90 end close together (or equal, with one build per bucket): stack the labels
+        labelLayout: { moveOverlap: 'shiftY' },
         endLabel: {
           show: true,
           color: v.text2,
@@ -164,12 +170,13 @@ export function RankedBars({
   reference,
   ariaLabel,
   tooltipExtra,
-  axisFormat,
+  durationAxis: isDuration,
 }: {
   labels: string[];
   values: number[];
   format: (n: number) => string;
-  axisFormat?: (n: number) => string;
+  /** values are durations in ms: time-unit ticks ("10m", "1h") instead of `format` */
+  durationAxis?: boolean;
   height?: number;
   onClick?: ChartClick;
   reference?: { value: number; label: string };
@@ -190,7 +197,9 @@ export function RankedBars({
           tipRow(v.series[0], '', format(values[p.dataIndex])) +
           (tooltipExtra ? tooltipExtra(p.dataIndex) : ''),
       },
-      xAxis: valueAxis(v, axisFormat ?? format, { splitNumber: 4 }),
+      xAxis: isDuration
+        ? durationAxis(v, reference ? [...values, reference.value] : values, { ticks: 4 })
+        : valueAxis(v, format, { splitNumber: 4 }),
       yAxis: categoryAxis(v, {
         data: labels,
         inverse: true,
@@ -222,7 +231,7 @@ export function RankedBars({
         },
       ],
     }),
-    [labels, values, format, axisFormat, v, reference, onClick, tooltipExtra],
+    [labels, values, format, isDuration, v, reference, onClick, tooltipExtra],
   );
   return <EChart option={option} height={h} onClick={onClick} ariaLabel={ariaLabel} />;
 }

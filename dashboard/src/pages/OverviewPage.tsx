@@ -6,7 +6,6 @@ import { BuildVolume, DurationTrend, NoteText, RankedBars } from '../components/
 import { FilterBar } from '../components/FilterBar';
 import { Empty, ErrorNote, Loading, PageHeader, Panel, StatTile } from '../components/Ui';
 import { fileName, fmtDelta, fmtDuration, fmtNumber, fmtPercent } from '../lib/format';
-import { fmtSeconds } from '../lib/format';
 import { useFilters } from '../state/filters';
 
 export function OverviewPage() {
@@ -96,7 +95,7 @@ export function OverviewPage() {
                   labels={files.data.map((f) => fileName(f.source))}
                   values={files.data.map((f) => f.avgMs ?? 0)}
                   format={fmtDuration}
-                  axisFormat={fmtSeconds}
+                  durationAxis
                   ariaLabel="Slowest translation units by average compile time"
                   tooltipExtra={(i) => `<div style="opacity:.75">${files.data![i].compiles} compiles · p90 ${fmtDuration(files.data![i].p90Ms)}</div>`}
                   onClick={(p) => navigate(`/hotspots?search=${encodeURIComponent(files.data![p.dataIndex].source)}`)}

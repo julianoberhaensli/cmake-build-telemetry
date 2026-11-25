@@ -15,10 +15,44 @@ export function fmtDuration(ms: number | null | undefined): string {
   return `${h}h ${String(m % 60).padStart(2, '0')}m`;
 }
 
-/** Axis-friendly duration with a fixed unit chosen by the caller. */
-export function fmtSeconds(ms: number): string {
-  const s = ms / 1000;
-  return s >= 100 ? `${Math.round(s)} s` : s >= 10 ? `${s.toFixed(0)} s` : `${s.toFixed(1)} s`;
+// --- time axes ---------------------------------------------------------------------------
+
+const STEPS_MS = [
+  1, 2, 5, 10, 20, 50, 100, 200, 500,
+  1_000, 2_000, 5_000, 10_000, 15_000, 30_000,
+  60_000, 120_000, 300_000, 600_000, 900_000, 1_800_000,
+  3_600_000, 7_200_000, 14_400_000, 21_600_000, 43_200_000, 86_400_000,
+];
+
+/** Tick interval so that roughly `targetTicks` fit: 1 2 5 … ms, 1 2 5 10 15 30 s, 1 2 5 10 15 30 min, 1 2 4 6 12 24 h. */
+export function tickStep(spanMs: number, targetTicks: number): number {
+  const raw = spanMs / Math.max(1, targetTicks);
+  const fixed = STEPS_MS.find((s) => s >= raw);
+  if (fixed !== undefined) return fixed;
+  // beyond a day: 1 2 5 × 10^k days
+  const days = raw / 86_400_000;
+  const pow = 10 ** Math.floor(Math.log10(days));
+  return ([1, 2, 5, 10].find((m) => m * pow >= days) ?? 10) * pow * 86_400_000;
+}
+
+/** Axis label for a duration tick: "0", "500 ms", "15 s", "1m 30s", "45m", "1h", "1h 30m". */
+export function fmtAxisDuration(ms: number, stepMs: number): string {
+  const neg = ms < 0;
+  const abs = Math.abs(ms);
+  let text: string;
+  if (abs === 0) text = '0';
+  else if (abs < 1000) text = `${Math.round(abs)} ms`;
+  else if (abs < 60_000) text = `${stepMs < 1000 ? +(abs / 1000).toFixed(stepMs >= 100 ? 1 : 2) : Math.round(abs / 1000)} s`;
+  else if (abs < 3_600_000) {
+    const m = Math.floor(abs / 60_000);
+    const s = Math.round((abs % 60_000) / 1000);
+    text = s ? `${m}m ${String(s).padStart(2, '0')}s` : `${m}m`;
+  } else {
+    const h = Math.floor(abs / 3_600_000);
+    const m = Math.round((abs % 3_600_000) / 60_000);
+    text = m ? `${h}h ${String(m).padStart(2, '0')}m` : `${h}h`;
+  }
+  return neg ? `−${text}` : text;
 }
 
 export function fmtNumber(n: number | null | undefined): string {

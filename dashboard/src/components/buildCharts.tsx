@@ -1,8 +1,8 @@
 import { useMemo } from 'react';
 import type { TargetAgg } from '../api/types';
-import { esc, fmtDuration, fmtSeconds } from '../lib/format';
+import { esc, fmtDuration } from '../lib/format';
 import { EChart } from './EChart';
-import { baseChart, categoryAxis, tipRow, useViz, valueAxis } from './viz';
+import { baseChart, categoryAxis, durationAxis, tipRow, useViz } from './viz';
 
 /** Per-target time split into compile / link / custom (stacked, legend + tooltip). */
 export function TargetBreakdown({ targets, onTarget }: { targets: TargetAgg[]; onTarget?: (target: string) => void }) {
@@ -30,7 +30,7 @@ export function TargetBreakdown({ targets, onTarget }: { targets: TargetAgg[]; o
           );
         },
       },
-      xAxis: valueAxis(v, (n: number) => fmtSeconds(n), { splitNumber: 4 }),
+      xAxis: durationAxis(v, top.map((t) => t.compileMs + t.linkMs + t.customMs), { ticks: 4 }),
       yAxis: categoryAxis(v, { data: top.map((t) => t.target), inverse: true, axisLabel: { color: v.text2, fontSize: 11, width: 160, overflow: 'truncate' } }),
       series: series.map((s, i) => ({
         name: s.name,
