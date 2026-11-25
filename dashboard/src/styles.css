@@ -85,6 +85,18 @@ body {
   cursor: pointer;
 }
 
+/* The width toggle only changes anything once the content area is wider than the centered cap
+   (1400px content + 220px navbar + 2 × 20px padding). */
+.layout-toggle {
+  display: none;
+}
+
+@media (min-width: 1660px) {
+  .layout-toggle {
+    display: inline-flex;
+  }
+}
+
 .mono {
   font-family: ui-monospace, SFMono-Regular, 'Cascadia Mono', Menlo, Consolas, monospace;
   font-size: 12px;

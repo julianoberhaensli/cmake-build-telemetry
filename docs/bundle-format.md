@@ -12,7 +12,7 @@ the same document.
   "createdAt": "2026-11-21T10:37:53Z",
   "hook": "postBuild",                                 // postBuild | postCMakeBuild | manual
   "dataVersion": { "major": 1, "minor": 1 },           // CMake instrumentation data version
-  "client":  { "name": "BuildTelemetry.cmake", "version": "1.2.1", "mode": "project", "detail": "full", "anonymized": false },
+  "client":  { "name": "BuildTelemetry.cmake", "version": "1.3.0", "mode": "project", "detail": "full", "anonymized": false },
   "machine": { "id": "5f3c…", "hostname": "ws-17", "user": "b9dc08f012df6261", "cpuModel": "AMD Ryzen 9 7950X 16-Core Processor", "osPrettyName": "Ubuntu 24.04.3 LTS" },
   "system":  { /* CMake staticSystemInformation verbatim: OSName, OSRelease, numberOfLogicalCPU, totalPhysicalMemory, … */ },
   "project": { "name": "atlas-engine", "sourceDir": "/home/dev/atlas", "buildDir": "/home/dev/atlas/build" },

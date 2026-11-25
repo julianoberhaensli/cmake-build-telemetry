@@ -1,4 +1,5 @@
-import { Alert, Anchor, Badge, Button, Code, CopyButton, Drawer, Group, Modal, SimpleGrid, Stack, Text } from '@mantine/core';
+import { Alert, Anchor, Badge, Button, Code, CopyButton, Group, Modal, SimpleGrid, Stack, Text } from '@mantine/core';
+import { useMediaQuery } from '@mantine/hooks';
 import { IconAlertTriangle, IconArrowsDiff, IconBrandGithub, IconCrosshair, IconDownload, IconExternalLink, IconTrash } from '@tabler/icons-react';
 import { useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
@@ -18,16 +19,16 @@ export function BuildDetailPage() {
   const build = useBuild(id);
   const steps = useSteps(id);
   const cats = useStepCategories();
-  // selected: outlined on the timeline; drawer: the step whose details are open
+  // selected: outlined on the timeline; details: the step whose popup is open
   const [selected, setSelected] = useState<number | null>(null);
-  const [drawer, setDrawer] = useState<number | null>(null);
+  const [details, setDetails] = useState<number | null>(null);
   const select = (seq: number | null) => {
     setSelected(seq);
-    setDrawer(seq);
+    setDetails(seq);
   };
   const locate = (seq: number) => {
     setSelected(seq);
-    setDrawer(null);
+    setDetails(null);
     timeline.current?.focusStep(seq);
   };
   const [filter, setFilter] = useState<StepFilter>(EMPTY_FILTER);
@@ -175,12 +176,12 @@ export function BuildDetailPage() {
         </SimpleGrid>
       </Stack>
 
-      <StepDrawer
+      <StepDialog
         buildId={b.id}
-        seq={drawer}
-        step={steps.data?.find((s) => s.seq === drawer)}
+        seq={details}
+        steps={steps.data}
         categories={categories}
-        onClose={() => setDrawer(null)}
+        onClose={() => setDetails(null)}
         onLocate={locate}
       />
     </>
@@ -324,33 +325,47 @@ function Environment({ b }: { b: BuildDetail }) {
   );
 }
 
-function StepDrawer({
+/** Step details (file, command, timings) as a centered popup over the page; full screen on phones. */
+function StepDialog({
   buildId,
   seq,
-  step: listed,
+  steps,
   categories,
   onClose,
   onLocate,
 }: {
   buildId: string;
   seq: number | null;
-  step?: Step;
+  steps?: Step[];
   categories: Map<number, StepCategory>;
   onClose: () => void;
   onLocate: (seq: number) => void;
 }) {
-  const step = useStep(buildId, seq);
+  // keep showing the last step while the popup closes, instead of flashing a loader
+  const [shown, setShown] = useState(seq);
+  if (seq !== null && seq !== shown) setShown(seq);
+  const step = useStep(buildId, shown);
   const s = step.data;
+  const listed = shown === null ? undefined : steps?.find((x) => x.seq === shown);
   const cat = listed?.category != null ? categories.get(listed.category) : undefined;
+  const phone = useMediaQuery('(max-width: 48em)');
   return (
-    <Drawer
+    <Modal
       opened={seq !== null}
       onClose={onClose}
-      position="right"
-      size="xl"
-      title={<Text fw={600}>{listed ? stepLabel(listed) : s ? fileName(s.source ?? s.output ?? s.target ?? s.role) : 'Step'}</Text>}
+      centered
+      size="70rem"
+      fullScreen={phone}
+      transitionProps={phone ? { transition: 'fade', duration: 150 } : undefined}
+      title={
+        <Text span fw={600} style={{ wordBreak: 'break-all' }}>
+          {listed ? stepLabel(listed) : s ? fileName(s.source ?? s.output ?? s.target ?? s.role) : 'Step'}
+        </Text>
+      }
     >
-      {!s ? (
+      {step.error ? (
+        <ErrorNote error={step.error} />
+      ) : !s ? (
         <Loading />
       ) : (
         <Stack gap="md">
@@ -359,23 +374,29 @@ function StepDrawer({
               Show on timeline
             </Button>
           </Group>
-          <KeyValue
-            items={[
-              ['Role', s.role],
-              ['Legend group', cat?.name ?? null],
-              ['Tool', listed?.tool ?? null],
-              ['Target', s.target],
-              ['Source', s.source],
-              ['Output', s.output],
-              ['Configuration', s.config],
-              ['Started at', `${fmtClock(s.startMs)} after build start`],
-              ['Duration', fmtDuration(s.durationMs)],
-              ['Exit code', s.result === null ? '–' : String(s.result)],
-              ['Peak memory', fmtKb(s.maxRssKb)],
-              ['CPU user / system', s.userTimeUs != null ? `${fmtDuration(s.userTimeUs / 1000)} / ${fmtDuration((s.systemTimeUs ?? 0) / 1000)}` : '–'],
-              ['Output size', fmtBytes(listed?.outputBytes)],
-            ]}
-          />
+          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="xl" verticalSpacing="xs">
+            <KeyValue
+              items={[
+                ['Role', s.role],
+                ['Legend group', cat?.name ?? null],
+                ['Tool', listed?.tool ?? null],
+                ['Target', s.target],
+                ['Source', s.source],
+                ['Output', s.output],
+                ['Configuration', s.config],
+              ]}
+            />
+            <KeyValue
+              items={[
+                ['Started at', `${fmtClock(s.startMs)} after build start`],
+                ['Duration', fmtDuration(s.durationMs)],
+                ['Exit code', s.result === null ? '–' : String(s.result)],
+                ['Peak memory', fmtKb(s.maxRssKb)],
+                ['CPU user / system', s.userTimeUs != null ? `${fmtDuration(s.userTimeUs / 1000)} / ${fmtDuration((s.systemTimeUs ?? 0) / 1000)}` : '–'],
+                ['Output size', fmtBytes(listed?.outputBytes)],
+              ]}
+            />
+          </SimpleGrid>
           <div>
             <Group justify="space-between" mb={4}>
               <Text size="sm" fw={600}>
@@ -403,6 +424,6 @@ function StepDrawer({
           </div>
         </Stack>
       )}
-    </Drawer>
+    </Modal>
   );
 }

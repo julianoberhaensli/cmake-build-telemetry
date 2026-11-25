@@ -44,7 +44,7 @@
 # Organisations may set a default endpoint here when vendoring the file
 # (the server's /api/v1/client/BuildTelemetry.cmake download does this).
 set(_BT_DEFAULT_URL "")
-set(_BT_CLIENT_VERSION "1.2.1")
+set(_BT_CLIENT_VERSION "1.3.0")
 
 if(CMAKE_VERSION VERSION_LESS 3.24)
   if(NOT CMAKE_SCRIPT_MODE_FILE)
