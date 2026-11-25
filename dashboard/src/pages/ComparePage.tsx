@@ -5,8 +5,8 @@ import { useCompare } from '../api/hooks';
 import type { BuildListItem } from '../api/types';
 import { EChart } from '../components/EChart';
 import { Empty, ErrorNote, KeyValue, Loading, PageHeader, Panel } from '../components/Ui';
-import { baseChart, categoryAxis, tipRow, useViz, valueAxis } from '../components/viz';
-import { esc, fileName, fmtDate, fmtDuration, fmtSeconds } from '../lib/format';
+import { baseChart, categoryAxis, durationAxis, tipRow, useViz } from '../components/viz';
+import { esc, fileName, fmtDate, fmtDuration } from '../lib/format';
 
 const GUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -80,7 +80,7 @@ function CompareResultView({ a, b, files }: { a: BuildListItem; b: BuildListItem
           );
         },
       },
-      xAxis: valueAxis(v, (n: number) => `${n > 0 ? '+' : ''}${fmtSeconds(n)}`),
+      xAxis: durationAxis(v, top.map((f) => f.deltaMs), { ticks: 4, signed: true }),
       yAxis: categoryAxis(v, { data: top.map((f) => fileName(f.source)), inverse: true, axisLabel: { color: v.text2, fontSize: 11, width: 200, overflow: 'truncate' } }),
       series: [
         {

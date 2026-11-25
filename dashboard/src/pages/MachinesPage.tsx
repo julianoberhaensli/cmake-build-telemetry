@@ -6,7 +6,6 @@ import { NoteText, RankedBars } from '../components/charts';
 import { FilterBar } from '../components/FilterBar';
 import { Empty, ErrorNote, Loading, PageHeader, Panel } from '../components/Ui';
 import { fmtAgo, fmtDuration, fmtMb, fmtNumber } from '../lib/format';
-import { fmtSeconds } from '../lib/format';
 import { useFilters } from '../state/filters';
 
 const SPEED_HELP =
@@ -148,7 +147,7 @@ function HardwareView() {
             labels={withFull.map((h) => h.key)}
             values={withFull.map((h) => h.p50FullWallMs ?? 0)}
             format={fmtDuration}
-                  axisFormat={fmtSeconds}
+            durationAxis
             ariaLabel="Hardware profiles by median full build time"
             tooltipExtra={(i) => `<div style="opacity:.75">${withFull[i].machines} machines · ${withFull[i].builds} builds · speed index ${withFull[i].speedIndex?.toFixed(0) ?? '–'}</div>`}
           />

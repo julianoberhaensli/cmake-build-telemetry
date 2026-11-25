@@ -68,19 +68,6 @@ export function slotColor(v: VizTokens, slot: number): string {
 
 // --- time axis ---------------------------------------------------------------------------
 
-const STEPS_MS = [
-  1, 2, 5, 10, 20, 50, 100, 200, 500,
-  1_000, 2_000, 5_000, 10_000, 15_000, 30_000,
-  60_000, 120_000, 300_000, 600_000, 900_000, 1_800_000,
-  3_600_000, 7_200_000, 14_400_000,
-];
-
-/** Tick interval so that roughly `targetTicks` fit: 1 2 5 … ms, 1 2 5 10 15 30 s, 1 2 5 10 15 30 min, 1 2 4 h. */
-export function tickStep(spanMs: number, targetTicks: number): number {
-  const raw = spanMs / Math.max(1, targetTicks);
-  return STEPS_MS.find((s) => s >= raw) ?? STEPS_MS[STEPS_MS.length - 1];
-}
-
 /** Clock-style offset from build start: 0:05, 12:30, 1:02:00; sub-second steps add decimals. */
 export function fmtClock(ms: number, stepMs = 1000): string {
   const neg = ms < 0;
