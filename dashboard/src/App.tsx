@@ -1,5 +1,5 @@
-import { ActionIcon, AppShell, Burger, Group, NavLink, Text, Tooltip, useComputedColorScheme, useMantineColorScheme } from '@mantine/core';
-import { useDisclosure } from '@mantine/hooks';
+import { ActionIcon, AppShell, Box, Burger, Group, NavLink, Text, Tooltip, useComputedColorScheme, useMantineColorScheme } from '@mantine/core';
+import { useDisclosure, useLocalStorage } from '@mantine/hooks';
 import {
   IconApi,
   IconArrowsDiff,
@@ -13,6 +13,8 @@ import {
   IconServer2,
   IconShieldLock,
   IconSun,
+  IconViewportNarrow,
+  IconViewportWide,
 } from '@tabler/icons-react';
 import { Link, Route, Routes, useLocation } from 'react-router';
 import { useMe } from './api/hooks';
@@ -40,8 +42,14 @@ const NAV = [
 /** Keep the global filter (range, project, …) when moving between list pages. */
 const KEEP = ['range', 'project', 'branch', 'source', 'kind', 'buildType'];
 
+/** Page content width: 'full' stretches across the screen, 'centered' caps it at CENTERED_MAX_W. */
+type LayoutMode = 'full' | 'centered';
+const CENTERED_MAX_W = 1400;
+
 export function App() {
   const [opened, { toggle, close }] = useDisclosure();
+  // per viewer, in this browser only; read synchronously so a centered layout does not flash full width
+  const [layout, setLayout] = useLocalStorage<LayoutMode>({ key: 'bt-layout', defaultValue: 'full', getInitialValueInEffect: false });
   const location = useLocation();
   const { setColorScheme } = useMantineColorScheme();
   // resolved scheme ('auto' follows the OS), so the toggle always flips what is on screen
@@ -70,6 +78,17 @@ export function App() {
             <Tooltip label="API reference">
               <ActionIcon component="a" href="/api/docs" variant="subtle" color="gray" aria-label="API reference">
                 <IconApi size={18} />
+              </ActionIcon>
+            </Tooltip>
+            <Tooltip label={layout === 'centered' ? 'Full width' : 'Centered layout'}>
+              <ActionIcon
+                className="layout-toggle"
+                variant="subtle"
+                color="gray"
+                onClick={() => setLayout(layout === 'centered' ? 'full' : 'centered')}
+                aria-label={layout === 'centered' ? 'Use full width' : 'Use centered layout'}
+              >
+                {layout === 'centered' ? <IconViewportWide size={18} /> : <IconViewportNarrow size={18} />}
               </ActionIcon>
             </Tooltip>
             <Tooltip label={colorScheme === 'dark' ? 'Light mode' : 'Dark mode'}>
@@ -117,19 +136,21 @@ export function App() {
           </Text>
         </AppShell.Section>
       </AppShell.Navbar>
-      <AppShell.Main maw={1600}>
-        <Routes>
-          <Route path="/" element={<OverviewPage />} />
-          <Route path="/builds" element={<BuildsPage />} />
-          <Route path="/builds/:id" element={<BuildDetailPage />} />
-          <Route path="/machines" element={<MachinesPage />} />
-          <Route path="/machines/:id" element={<MachineDetailPage />} />
-          <Route path="/hotspots" element={<HotspotsPage />} />
-          <Route path="/compare" element={<ComparePage />} />
-          <Route path="/setup" element={<SetupPage />} />
-          <Route path="/admin" element={<AdminPage />} />
-          <Route path="*" element={<Empty>Page not found.</Empty>} />
-        </Routes>
+      <AppShell.Main>
+        <Box maw={layout === 'centered' ? CENTERED_MAX_W : undefined} mx="auto">
+          <Routes>
+            <Route path="/" element={<OverviewPage />} />
+            <Route path="/builds" element={<BuildsPage />} />
+            <Route path="/builds/:id" element={<BuildDetailPage />} />
+            <Route path="/machines" element={<MachinesPage />} />
+            <Route path="/machines/:id" element={<MachineDetailPage />} />
+            <Route path="/hotspots" element={<HotspotsPage />} />
+            <Route path="/compare" element={<ComparePage />} />
+            <Route path="/setup" element={<SetupPage />} />
+            <Route path="/admin" element={<AdminPage />} />
+            <Route path="*" element={<Empty>Page not found.</Empty>} />
+          </Routes>
+        </Box>
       </AppShell.Main>
     </AppShell>
   );
