@@ -49,6 +49,11 @@ A single file with several entry points:
 | worker | `cmake -DBT_MODE=worker -P …` (detached) | staged snapshots → bundles → upload queue |
 | management | `cmake -P BuildTelemetry.cmake install\|uninstall\|status\|test\|flush <dir>` | machine mode, connectivity check, manual flush |
 
+The file has two parts. Part 1 holds the helpers that both modes need and project mode
+itself; `include()` runs project mode and then `return()`s, so a consuming project defines
+only these 9 functions. Part 2 holds the callback, worker, bundling, upload and management
+commands, and is only defined when the file runs under `cmake -P`.
+
 Callback algorithm:
 
 1. Return immediately if `BUILD_TELEMETRY=OFF` / `DO_NOT_TRACK=1`, if the index holds only the

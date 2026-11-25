@@ -1,7 +1,7 @@
 {
   "name": "build-telemetry-dashboard",
   "private": true,
-  "version": "1.2.0",
+  "version": "1.2.1",
   "type": "module",
   "description": "Dashboard for CMake build telemetry (React + Mantine + ECharts)",
   "license": "MIT",

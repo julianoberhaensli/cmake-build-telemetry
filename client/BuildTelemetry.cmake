@@ -10,6 +10,8 @@
 #  through CMake's native instrumentation (cmake-instrumentation(7), CMake 4.3+)
 #  and uploads it to a BuildTelemetry server. Single file, no dependencies:
 #  the callback and the uploader are this same file executed with `cmake -P`.
+#  include() stops after part 1 (helpers + project mode); part 2 (callback,
+#  uploader, management commands) is only defined under `cmake -P`.
 #
 #  PROJECT MODE (instrument one project):
 #      include(cmake/BuildTelemetry.cmake)            # anywhere in CMakeLists.txt
@@ -42,7 +44,7 @@
 # Organisations may set a default endpoint here when vendoring the file
 # (the server's /api/v1/client/BuildTelemetry.cmake download does this).
 set(_BT_DEFAULT_URL "")
-set(_BT_CLIENT_VERSION "1.2.0")
+set(_BT_CLIENT_VERSION "1.2.1")
 
 if(CMAKE_VERSION VERSION_LESS 3.24)
   if(NOT CMAKE_SCRIPT_MODE_FILE)
@@ -58,8 +60,15 @@ cmake_policy(PUSH)
 # breaks file(ARCHIVE_CREATE FORMAT raw), which we use for gzip.
 cmake_policy(VERSION 3.24...4.3)
 
+# =============================================================================
+#  Part 1 - helpers and project mode
+#
+#  This is everything include() defines in the consuming project. Script mode
+#  (cmake -P) reads it too and then continues with part 2.
+# =============================================================================
+
 # -----------------------------------------------------------------------------
-#  Small helpers
+#  Helpers shared with script mode
 # -----------------------------------------------------------------------------
 
 # Quote a CMake string as a JSON string literal (empty -> null when NULLABLE).
@@ -74,22 +83,6 @@ function(_bt_json_str out value)
   string(REPLACE "\r" "\\r" value "${value}")
   string(REPLACE "\t" "\\t" value "${value}")
   set(${out} "\"${value}\"" PARENT_SCOPE)
-endfunction()
-
-# Append "key":<raw json> to the JSON object body held in <objvar>.
-function(_bt_obj objvar key raw)
-  if("${${objvar}}" STREQUAL "")
-    set(${objvar} "\"${key}\":${raw}" PARENT_SCOPE)
-  else()
-    set(${objvar} "${${objvar}},\"${key}\":${raw}" PARENT_SCOPE)
-  endif()
-endfunction()
-
-# Append "key":"string" (null when empty).
-function(_bt_obj_str objvar key value)
-  _bt_json_str(q "${value}" NULLABLE)
-  _bt_obj(${objvar} "${key}" "${q}")
-  set(${objvar} "${${objvar}}" PARENT_SCOPE)
 endfunction()
 
 function(_bt_truthy out value)
@@ -121,16 +114,6 @@ function(_bt_env_disabled out)
     _bt_truthy(is_disabled "$ENV{DO_NOT_TRACK}")
   endif()
   set(${out} ${is_disabled} PARENT_SCOPE)
-endfunction()
-
-function(_bt_now_iso out)
-  string(TIMESTAMP t "%Y-%m-%dT%H:%M:%SZ" UTC)
-  set(${out} "${t}" PARENT_SCOPE)
-endfunction()
-
-function(_bt_now_epoch out)
-  string(TIMESTAMP t "%s" UTC)
-  set(${out} "${t}" PARENT_SCOPE)
 endfunction()
 
 # User-wide CMake configuration directory (see CMAKE_CONFIG_DIR, CMake 3.31+).
@@ -168,6 +151,207 @@ function(_bt_read_settings file prefix)
     string(SUBSTRING "${line}" ${start} -1 value)
     set(${prefix}_${key} "${value}" PARENT_SCOPE)
   endforeach()
+endfunction()
+
+function(_bt_query_json out cmake_exe self settings_file data_minor with_process_metrics with_dynamic hooks_and_callback)
+  set(options "\"staticSystemInformation\"")
+  if(with_process_metrics)
+    string(APPEND options ",\"processMetrics\"")
+  endif()
+  if(with_dynamic)
+    string(APPEND options ",\"dynamicSystemInformation\"")
+  endif()
+  # CMake 4.3.0 accepts only an integer version (the {major, minor} object came in a
+  # later 4.3 patch). CMake always writes its newest data version anyway, so the object
+  # is needed only for options that a minor version introduced (processMetrics: 1.2).
+  if(data_minor EQUAL 0)
+    set(version "1")
+  else()
+    set(version "{\"major\":1,\"minor\":${data_minor}}")
+  endif()
+  if(hooks_and_callback)
+    set(cb "\"${cmake_exe}\" -DBT_MODE=callback \"-DBT_SETTINGS=${settings_file}\" -P \"${self}\"")
+    _bt_json_str(cbq "${cb}")
+    set(body "\"version\":${version},\"hooks\":[\"postBuild\",\"postCMakeBuild\"],\"options\":[${options}],\"callbacks\":[${cbq}]")
+  else()
+    set(body "\"version\":${version},\"options\":[${options}]")
+  endif()
+  set(${out} "{${body}}\n" PARENT_SCOPE)
+endfunction()
+
+function(_bt_write_settings file mode url token detail tags)
+  set(t "# BuildTelemetry settings (generated) - key=value, environment variables override\n")
+  string(APPEND t "mode=${mode}\n")
+  string(APPEND t "url=${url}\n")
+  if(NOT token STREQUAL "")
+    string(APPEND t "token=${token}\n")
+  endif()
+  string(APPEND t "detail=${detail}\n")
+  if(NOT tags STREQUAL "")
+    string(APPEND t "tags=${tags}\n")
+  endif()
+  foreach(k upload timeout tls_verify ca_file user_id anonymize max_spool)
+    string(TOUPPER "BUILD_TELEMETRY_${k}" var)
+    if(DEFINED ${var} AND NOT "${${var}}" STREQUAL "")
+      string(APPEND t "${k}=${${var}}\n")
+    endif()
+  endforeach()
+  file(WRITE "${file}" "${t}")
+endfunction()
+
+# -----------------------------------------------------------------------------
+#  Project mode (include())
+# -----------------------------------------------------------------------------
+
+function(_bt_project_main)
+  get_property(done GLOBAL PROPERTY _BUILD_TELEMETRY_CONFIGURED)
+  if(done)
+    return()
+  endif()
+  set_property(GLOBAL PROPERTY _BUILD_TELEMETRY_CONFIGURED 1)
+
+  option(BUILD_TELEMETRY "Collect build telemetry via CMake instrumentation and upload it" ON)
+  set(BUILD_TELEMETRY_URL "" CACHE STRING "BuildTelemetry server URL (empty: env BUILD_TELEMETRY_URL / user settings)")
+  set(BUILD_TELEMETRY_DETAIL "full" CACHE STRING "Telemetry detail: full | nocommands | summary")
+  set_property(CACHE BUILD_TELEMETRY_DETAIL PROPERTY STRINGS full nocommands summary)
+  mark_as_advanced(BUILD_TELEMETRY_DETAIL)
+
+  set(state_dir "${CMAKE_BINARY_DIR}/.cmake/build-telemetry")
+  set(query_dir "${CMAKE_BINARY_DIR}/.cmake/instrumentation/v1/query")
+  set(query_file "${query_dir}/build-telemetry.json")
+  _bt_truthy(quiet "${BUILD_TELEMETRY_QUIET}")
+
+  # The environment variable BUILD_TELEMETRY overrides the option in both directions, so a
+  # project can default to OFF and each developer opts in once (it also survives a fresh
+  # build tree). DO_NOT_TRACK=1 always wins.
+  set(reason "")
+  _bt_env_disabled(env_off)
+  set(env_on FALSE)
+  if(DEFINED ENV{BUILD_TELEMETRY})
+    _bt_truthy(env_on "$ENV{BUILD_TELEMETRY}")
+  endif()
+  if(env_off)
+    set(reason "disabled by environment (BUILD_TELEMETRY / DO_NOT_TRACK)")
+  elseif(NOT BUILD_TELEMETRY AND NOT env_on)
+    set(reason "disabled (BUILD_TELEMETRY=OFF; opt in with environment variable BUILD_TELEMETRY=ON)")
+  elseif(CMAKE_VERSION VERSION_LESS 4.3)
+    set(reason "CMake ${CMAKE_VERSION} has no build instrumentation (needs >= 4.3) - off")
+  elseif(NOT CMAKE_GENERATOR MATCHES "Ninja|Makefiles|FASTBuild")
+    set(reason "generator '${CMAKE_GENERATOR}' is not instrumented by CMake (use Ninja or Makefiles) - off")
+  endif()
+
+  # Endpoint: CMake variable > environment > user settings > vendored default
+  set(url "")
+  if(reason STREQUAL "")
+    _bt_user_config_dir(cfg)
+    set(_bts_url "")
+    set(_bts_token "")
+    _bt_read_settings("${cfg}/build-telemetry/settings.txt" _bts)
+    if(DEFINED BUILD_TELEMETRY_URL AND NOT BUILD_TELEMETRY_URL STREQUAL "")
+      set(url "${BUILD_TELEMETRY_URL}")
+    elseif(NOT "$ENV{BUILD_TELEMETRY_URL}" STREQUAL "")
+      set(url "$ENV{BUILD_TELEMETRY_URL}")
+    elseif(NOT _bts_url STREQUAL "")
+      set(url "${_bts_url}")
+    else()
+      set(url "${_BT_DEFAULT_URL}")
+    endif()
+    if(url STREQUAL "")
+      set(reason "no endpoint configured (set BUILD_TELEMETRY_URL) - off")
+    endif()
+  endif()
+
+  if(NOT reason STREQUAL "")
+    if(EXISTS "${query_file}")
+      file(REMOVE "${query_file}")
+    endif()
+    if(NOT quiet)
+      message(STATUS "BuildTelemetry: ${reason}")
+    endif()
+    return()
+  endif()
+
+  set(token "")
+  if(DEFINED BUILD_TELEMETRY_TOKEN)
+    set(token "${BUILD_TELEMETRY_TOKEN}")
+  elseif(NOT _bts_token STREQUAL "")
+    set(token "${_bts_token}")
+  endif()
+  set(detail "${BUILD_TELEMETRY_DETAIL}")
+  if(NOT "$ENV{BUILD_TELEMETRY_DETAIL}" STREQUAL "")
+    set(detail "$ENV{BUILD_TELEMETRY_DETAIL}")
+  endif()
+
+  file(MAKE_DIRECTORY "${state_dir}" "${query_dir}")
+  configure_file("${CMAKE_CURRENT_FUNCTION_LIST_FILE}" "${state_dir}/BuildTelemetry.cmake" COPYONLY)
+  _bt_write_settings("${state_dir}/settings.txt" project "${url}" "${token}" "${detail}" "${BUILD_TELEMETRY_TAGS}")
+
+  # The configuring CMake reads this query itself, so 4.5+ may ask for data 1.2 (processMetrics).
+  if(CMAKE_VERSION VERSION_GREATER_EQUAL 4.5)
+    set(minor 2)
+    set(pm TRUE)
+  else()
+    set(minor 0)
+    set(pm FALSE)
+  endif()
+  _bt_truthy(dyn "${BUILD_TELEMETRY_DYNAMIC_SYSINFO}")
+  _bt_query_json(q "${CMAKE_COMMAND}" "${state_dir}/BuildTelemetry.cmake" "${state_dir}/settings.txt" ${minor} ${pm} ${dyn} TRUE)
+  set(old "")
+  if(EXISTS "${query_file}")
+    file(READ "${query_file}" old)
+  endif()
+  if(NOT old STREQUAL q)
+    file(WRITE "${query_file}" "${q}")
+  endif()
+  if(NOT quiet)
+    if(env_on)
+      set(hint "enabled by environment BUILD_TELEMETRY=ON; set it to OFF or unset it to disable")
+    else()
+      set(hint "disable with -DBUILD_TELEMETRY=OFF or env BUILD_TELEMETRY=OFF")
+    endif()
+    message(STATUS "BuildTelemetry: enabled -> ${url} (detail=${detail}; ${hint})")
+  endif()
+endfunction()
+
+# include() ends here, so a consuming project never defines the runtime below.
+if(NOT (CMAKE_SCRIPT_MODE_FILE AND CMAKE_SCRIPT_MODE_FILE STREQUAL CMAKE_CURRENT_LIST_FILE))
+  _bt_project_main()
+  cmake_policy(POP)
+  return()
+endif()
+
+# =============================================================================
+#  Part 2 - script mode (cmake -P): callback, worker, management commands
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+#  Runtime helpers
+# -----------------------------------------------------------------------------
+
+# Append "key":<raw json> to the JSON object body held in <objvar>.
+function(_bt_obj objvar key raw)
+  if("${${objvar}}" STREQUAL "")
+    set(${objvar} "\"${key}\":${raw}" PARENT_SCOPE)
+  else()
+    set(${objvar} "${${objvar}},\"${key}\":${raw}" PARENT_SCOPE)
+  endif()
+endfunction()
+
+# Append "key":"string" (null when empty).
+function(_bt_obj_str objvar key value)
+  _bt_json_str(q "${value}" NULLABLE)
+  _bt_obj(${objvar} "${key}" "${q}")
+  set(${objvar} "${${objvar}}" PARENT_SCOPE)
+endfunction()
+
+function(_bt_now_iso out)
+  string(TIMESTAMP t "%Y-%m-%dT%H:%M:%SZ" UTC)
+  set(${out} "${t}" PARENT_SCOPE)
+endfunction()
+
+function(_bt_now_epoch out)
+  string(TIMESTAMP t "%s" UTC)
+  set(${out} "${t}" PARENT_SCOPE)
 endfunction()
 
 # Resolve the effective value of one setting:
@@ -1144,52 +1328,6 @@ function(_bt_callback index_file)
   _bt_spawn_worker("${state_dir}" "${BT_SETTINGS}" ${large})
 endfunction()
 
-function(_bt_query_json out cmake_exe self settings_file data_minor with_process_metrics with_dynamic hooks_and_callback)
-  set(options "\"staticSystemInformation\"")
-  if(with_process_metrics)
-    string(APPEND options ",\"processMetrics\"")
-  endif()
-  if(with_dynamic)
-    string(APPEND options ",\"dynamicSystemInformation\"")
-  endif()
-  # CMake 4.3.0 accepts only an integer version (the {major, minor} object came in a
-  # later 4.3 patch). CMake always writes its newest data version anyway, so the object
-  # is needed only for options that a minor version introduced (processMetrics: 1.2).
-  if(data_minor EQUAL 0)
-    set(version "1")
-  else()
-    set(version "{\"major\":1,\"minor\":${data_minor}}")
-  endif()
-  if(hooks_and_callback)
-    set(cb "\"${cmake_exe}\" -DBT_MODE=callback \"-DBT_SETTINGS=${settings_file}\" -P \"${self}\"")
-    _bt_json_str(cbq "${cb}")
-    set(body "\"version\":${version},\"hooks\":[\"postBuild\",\"postCMakeBuild\"],\"options\":[${options}],\"callbacks\":[${cbq}]")
-  else()
-    set(body "\"version\":${version},\"options\":[${options}]")
-  endif()
-  set(${out} "{${body}}\n" PARENT_SCOPE)
-endfunction()
-
-function(_bt_write_settings file mode url token detail tags)
-  set(t "# BuildTelemetry settings (generated) - key=value, environment variables override\n")
-  string(APPEND t "mode=${mode}\n")
-  string(APPEND t "url=${url}\n")
-  if(NOT token STREQUAL "")
-    string(APPEND t "token=${token}\n")
-  endif()
-  string(APPEND t "detail=${detail}\n")
-  if(NOT tags STREQUAL "")
-    string(APPEND t "tags=${tags}\n")
-  endif()
-  foreach(k upload timeout tls_verify ca_file user_id anonymize max_spool)
-    string(TOUPPER "BUILD_TELEMETRY_${k}" var)
-    if(DEFINED ${var} AND NOT "${${var}}" STREQUAL "")
-      string(APPEND t "${k}=${${var}}\n")
-    endif()
-  endforeach()
-  file(WRITE "${file}" "${t}")
-endfunction()
-
 function(_bt_cmd_install)
   if(CMAKE_VERSION VERSION_LESS 4.3)
     message(WARNING "BuildTelemetry: this CMake (${CMAKE_VERSION}) cannot produce instrumentation data itself; "
@@ -1364,124 +1502,5 @@ function(_bt_script_main)
   endif()
 endfunction()
 
-# -----------------------------------------------------------------------------
-#  Project mode (include())
-# -----------------------------------------------------------------------------
-
-function(_bt_project_main)
-  get_property(done GLOBAL PROPERTY _BUILD_TELEMETRY_CONFIGURED)
-  if(done)
-    return()
-  endif()
-  set_property(GLOBAL PROPERTY _BUILD_TELEMETRY_CONFIGURED 1)
-
-  option(BUILD_TELEMETRY "Collect build telemetry via CMake instrumentation and upload it" ON)
-  set(BUILD_TELEMETRY_URL "" CACHE STRING "BuildTelemetry server URL (empty: env BUILD_TELEMETRY_URL / user settings)")
-  set(BUILD_TELEMETRY_DETAIL "full" CACHE STRING "Telemetry detail: full | nocommands | summary")
-  set_property(CACHE BUILD_TELEMETRY_DETAIL PROPERTY STRINGS full nocommands summary)
-  mark_as_advanced(BUILD_TELEMETRY_DETAIL)
-
-  set(state_dir "${CMAKE_BINARY_DIR}/.cmake/build-telemetry")
-  set(query_dir "${CMAKE_BINARY_DIR}/.cmake/instrumentation/v1/query")
-  set(query_file "${query_dir}/build-telemetry.json")
-  _bt_truthy(quiet "${BUILD_TELEMETRY_QUIET}")
-
-  # The environment variable BUILD_TELEMETRY overrides the option in both directions, so a
-  # project can default to OFF and each developer opts in once (it also survives a fresh
-  # build tree). DO_NOT_TRACK=1 always wins.
-  set(reason "")
-  _bt_env_disabled(env_off)
-  set(env_on FALSE)
-  if(DEFINED ENV{BUILD_TELEMETRY})
-    _bt_truthy(env_on "$ENV{BUILD_TELEMETRY}")
-  endif()
-  if(env_off)
-    set(reason "disabled by environment (BUILD_TELEMETRY / DO_NOT_TRACK)")
-  elseif(NOT BUILD_TELEMETRY AND NOT env_on)
-    set(reason "disabled (BUILD_TELEMETRY=OFF; opt in with environment variable BUILD_TELEMETRY=ON)")
-  elseif(CMAKE_VERSION VERSION_LESS 4.3)
-    set(reason "CMake ${CMAKE_VERSION} has no build instrumentation (needs >= 4.3) - off")
-  elseif(NOT CMAKE_GENERATOR MATCHES "Ninja|Makefiles|FASTBuild")
-    set(reason "generator '${CMAKE_GENERATOR}' is not instrumented by CMake (use Ninja or Makefiles) - off")
-  endif()
-
-  # Endpoint: CMake variable > environment > user settings > vendored default
-  set(url "")
-  if(reason STREQUAL "")
-    _bt_user_config_dir(cfg)
-    set(_bts_url "")
-    set(_bts_token "")
-    _bt_read_settings("${cfg}/build-telemetry/settings.txt" _bts)
-    if(DEFINED BUILD_TELEMETRY_URL AND NOT BUILD_TELEMETRY_URL STREQUAL "")
-      set(url "${BUILD_TELEMETRY_URL}")
-    elseif(NOT "$ENV{BUILD_TELEMETRY_URL}" STREQUAL "")
-      set(url "$ENV{BUILD_TELEMETRY_URL}")
-    elseif(NOT _bts_url STREQUAL "")
-      set(url "${_bts_url}")
-    else()
-      set(url "${_BT_DEFAULT_URL}")
-    endif()
-    if(url STREQUAL "")
-      set(reason "no endpoint configured (set BUILD_TELEMETRY_URL) - off")
-    endif()
-  endif()
-
-  if(NOT reason STREQUAL "")
-    if(EXISTS "${query_file}")
-      file(REMOVE "${query_file}")
-    endif()
-    if(NOT quiet)
-      message(STATUS "BuildTelemetry: ${reason}")
-    endif()
-    return()
-  endif()
-
-  set(token "")
-  if(DEFINED BUILD_TELEMETRY_TOKEN)
-    set(token "${BUILD_TELEMETRY_TOKEN}")
-  elseif(NOT _bts_token STREQUAL "")
-    set(token "${_bts_token}")
-  endif()
-  set(detail "${BUILD_TELEMETRY_DETAIL}")
-  if(NOT "$ENV{BUILD_TELEMETRY_DETAIL}" STREQUAL "")
-    set(detail "$ENV{BUILD_TELEMETRY_DETAIL}")
-  endif()
-
-  file(MAKE_DIRECTORY "${state_dir}" "${query_dir}")
-  configure_file("${CMAKE_CURRENT_FUNCTION_LIST_FILE}" "${state_dir}/BuildTelemetry.cmake" COPYONLY)
-  _bt_write_settings("${state_dir}/settings.txt" project "${url}" "${token}" "${detail}" "${BUILD_TELEMETRY_TAGS}")
-
-  # The configuring CMake reads this query itself, so 4.5+ may ask for data 1.2 (processMetrics).
-  if(CMAKE_VERSION VERSION_GREATER_EQUAL 4.5)
-    set(minor 2)
-    set(pm TRUE)
-  else()
-    set(minor 0)
-    set(pm FALSE)
-  endif()
-  _bt_truthy(dyn "${BUILD_TELEMETRY_DYNAMIC_SYSINFO}")
-  _bt_query_json(q "${CMAKE_COMMAND}" "${state_dir}/BuildTelemetry.cmake" "${state_dir}/settings.txt" ${minor} ${pm} ${dyn} TRUE)
-  set(old "")
-  if(EXISTS "${query_file}")
-    file(READ "${query_file}" old)
-  endif()
-  if(NOT old STREQUAL q)
-    file(WRITE "${query_file}" "${q}")
-  endif()
-  if(NOT quiet)
-    if(env_on)
-      set(hint "enabled by environment BUILD_TELEMETRY=ON; set it to OFF or unset it to disable")
-    else()
-      set(hint "disable with -DBUILD_TELEMETRY=OFF or env BUILD_TELEMETRY=OFF")
-    endif()
-    message(STATUS "BuildTelemetry: enabled -> ${url} (detail=${detail}; ${hint})")
-  endif()
-endfunction()
-
+_bt_script_main()
 cmake_policy(POP)
-
-if(CMAKE_SCRIPT_MODE_FILE AND CMAKE_SCRIPT_MODE_FILE STREQUAL CMAKE_CURRENT_LIST_FILE)
-  _bt_script_main()
-else()
-  _bt_project_main()
-endif()

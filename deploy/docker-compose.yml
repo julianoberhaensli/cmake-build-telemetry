@@ -31,7 +31,7 @@ services:
     # not published: only the app talks to the database
 
   app:
-    # pin a release in production, e.g. ...cmake-build-telemetry:1.2.0 (set BT_IMAGE in .env)
+    # pin a release in production, e.g. ...cmake-build-telemetry:1.2.1 (set BT_IMAGE in .env)
     image: ${BT_IMAGE:-ghcr.io/julianoberhaensli/cmake-build-telemetry:latest}
     restart: unless-stopped
     depends_on:
